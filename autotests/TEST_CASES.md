@@ -31,7 +31,7 @@
 | TC-API-22 | «Выделить лицо» | с лицом — 201 и `face_focus=true`; на фото без лица — 422 с понятным текстом |
 | TC-API-23 | `PUT /api/projects/{id}/photo` | схема пересчитана, прогресс сброшен на шаг 1; zoom 9 → 422 |
 | TC-API-25 | `GET /` на бэкенде | 307 на приложение http://localhost:3000; `/favicon.ico` → 204 |
-| TC-API-24 | `GET /api/images/{id}/mask.png` | маска: человек белый, фон чёрный; без rembg — 503 с подсказкой про requirements-bg.txt |
+| TC-API-24 | Удаление фона: `POST /api/images/{id}/mask` → опрос `GET …/mask` → `GET …/mask.png` | POST отвечает сразу (202), даже если модель грузится; статус доходит до `ready`; маска: человек белый, фон чёрный; до готовности `mask.png` → 409; ошибка модели видна в статусе; без rembg — 503 с подсказкой; `/api/config` не импортирует rembg |
 
 ## UI (Playwright)
 

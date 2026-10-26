@@ -65,10 +65,37 @@ describe("PhotoControls", () => {
     expect(screen.getByText(/requirements-bg\.txt/)).toBeInTheDocument();
   });
 
-  it("пока считается маска, галочка заблокирована и объясняется задержка", () => {
-    setup(withFace, allFeatures, { ...DEFAULT_PREP, remove_background: true }, "loading" as never);
+  it("пока считается маска, галочка заблокирована и показан статус с сервера", () => {
+    const onChange = vi.fn();
+    render(
+      <PhotoControls
+        info={withFace}
+        features={allFeatures}
+        prep={{ ...DEFAULT_PREP, remove_background: true }}
+        onChange={onChange}
+        maskStatus="loading"
+        maskError=""
+        maskNote="Загружаем модель удаления фона…"
+      />,
+    );
     expect(screen.getByLabelText("Убрать фон")).toBeDisabled();
-    expect(screen.getByText(/скачивает модель/)).toBeInTheDocument();
+    expect(screen.getByText("Загружаем модель удаления фона…")).toBeInTheDocument();
+  });
+
+  it("ошибку удаления фона видно", () => {
+    const onChange = vi.fn();
+    render(
+      <PhotoControls
+        info={withFace}
+        features={allFeatures}
+        prep={DEFAULT_PREP}
+        onChange={onChange}
+        maskStatus="error"
+        maskError="Не удалось загрузить модель удаления фона: нет сети"
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("нет сети");
+    expect(screen.getByLabelText("Убрать фон")).not.toBeDisabled();
   });
 
   it("сброс", () => {

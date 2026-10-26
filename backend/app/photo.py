@@ -14,10 +14,13 @@
 
 from __future__ import annotations
 
+import functools
+import importlib.util
 import io
 import logging
 import math
 import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -25,7 +28,8 @@ from PIL import Image
 
 from .config import FACE_IMPORTANCE, PROCESSING_SIZE
 
-log = logging.getLogger(__name__)
+# Пишем в лог uvicorn — сообщения про модель фона видны в окне бэкенда.
+log = logging.getLogger("uvicorn.error")
 
 MAX_ORIGINAL_SIDE = 1600
 AUTO_LEVELS_CUTOFF = 0.01
@@ -139,6 +143,7 @@ def png_bytes(img: Image.Image) -> bytes:
 
 
 # --- лицо -------------------------------------------------------------------
+@functools.cache
 def face_detection_available() -> bool:
     try:
         import cv2  # noqa: F401
@@ -195,31 +200,88 @@ def face_importance(width: int, height: int, prep: Prep, face: Box, size: int = 
 
 
 # --- фон --------------------------------------------------------------------
-_session = None
-_session_lock = threading.Lock()
+# Удаление фона — тяжёлая операция: импорт rembg (onnxruntime, numba) на Windows при
+# первом запуске может идти десятки секунд, модель (~170 МБ) скачивается один раз.
+# Поэтому всё это делается в фоне, а HTTP-запросы только узнают статус — ни один
+# запрос не висит дольше секунды, и прокси Next.js не рвёт соединение по таймауту.
 BACKGROUND_MODEL = "u2net_human_seg"
 
 
 def background_removal_available() -> bool:
-    try:
-        import rembg  # noqa: F401
+    """Установлен ли rembg. Только поиск модуля, без импорта — это мгновенно."""
+    return importlib.util.find_spec("rembg") is not None
 
-        return True
-    except ImportError:
-        return False
+
+class BackgroundEngine:
+    """Модель удаления фона и очередь масок. Один экземпляр на процесс."""
+
+    def __init__(self) -> None:
+        self.state = "idle"  # idle → loading → ready | error
+        self.error: str | None = None
+        self._session = None
+        self._lock = threading.Lock()
+        self._ready = threading.Event()
+        self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bg-mask")
+        self._jobs: dict[str, Future] = {}
+
+    def status(self) -> dict:
+        return {"installed": background_removal_available(), "state": self.state, "error": self.error}
+
+    def warm_up(self) -> None:
+        """Начать загрузку модели в фоне (вызывается при старте бэкенда)."""
+        if not background_removal_available():
+            return
+        with self._lock:
+            if self.state != "idle":
+                return
+            self.state = "loading"
+        threading.Thread(target=self._load, name="bg-model", daemon=True).start()
+
+    def _load(self) -> None:
+        try:
+            log.info("Удаление фона: загружаем модель %s (при первом запуске скачивается ~170 МБ)…", BACKGROUND_MODEL)
+            from rembg import new_session
+
+            self._session = new_session(BACKGROUND_MODEL)
+            self.state = "ready"
+            log.info("Удаление фона: модель готова")
+        except Exception as exc:  # noqa: BLE001 — показываем пользователю любую причину
+            self.state = "error"
+            self.error = f"Не удалось загрузить модель удаления фона: {exc}"
+            log.exception("Удаление фона: ошибка загрузки модели")
+        finally:
+            self._ready.set()
+
+    def mask(self, img: Image.Image) -> Image.Image:
+        """Синхронно: дождаться модели и посчитать маску (L, 255 — человек)."""
+        self.warm_up()
+        self._ready.wait()
+        if self.state != "ready":
+            raise RuntimeError(self.error or "Модель удаления фона недоступна")
+        from rembg import remove
+
+        with self._lock:
+            mask = remove(img.convert("RGB"), session=self._session, only_mask=True)
+        return mask.convert("L")
+
+    def submit(self, key: str, job) -> Future:
+        """Поставить расчёт маски в очередь (повторный вызов вернёт ту же задачу)."""
+        with self._lock:
+            fut = self._jobs.get(key)
+            if fut is None or (fut.done() and fut.exception() is not None):
+                fut = self._pool.submit(job)
+                self._jobs[key] = fut
+            return fut
+
+    def job(self, key: str) -> Future | None:
+        return self._jobs.get(key)
+
+
+engine = BackgroundEngine()
 
 
 def background_mask(img: Image.Image) -> Image.Image:
-    """Маска «человек / фон» (L, 255 — человек). Модель ~170 МБ скачивается при первом вызове."""
-    global _session
-    from rembg import new_session, remove
-
-    with _session_lock:
-        if _session is None:
-            log.info("Загружаем модель удаления фона %s (один раз)…", BACKGROUND_MODEL)
-            _session = new_session(BACKGROUND_MODEL)
-        mask = remove(img.convert("RGB"), session=_session, only_mask=True)
-    return mask.convert("L")
+    return engine.mask(img)
 
 
 def clamp_prep(prep: Prep) -> Prep:

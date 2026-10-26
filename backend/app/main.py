@@ -29,6 +29,7 @@ from .thread import cumulative_lengths_m, recommended_lines, thread_stats
 async def lifespan(_: FastAPI):
     build_line_cache()  # первый проект не будет ждать предрасчёт линий
     storage.delete_orphan_images()
+    photo.engine.warm_up()  # модель удаления фона грузится в фоне, сервер стартует сразу
     yield
 
 
@@ -202,20 +203,50 @@ def _image_out(image: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _mask_for(image: dict[str, Any]) -> Image.Image:
-    """Маска фона: из кэша в БД или считаем (несколько секунд при первом вызове)."""
-    if image.get("mask"):
-        return Image.open(io.BytesIO(image["mask"]))
+_NOT_INSTALLED = (
+    "Удаление фона не установлено. В папке backend выполните: pip install -r requirements-bg.txt "
+    "и перезапустите бэкенд (scripts\\start.bat делает это сам)."
+)
+
+
+def _compute_mask(image_id: str) -> None:
+    """Задача для очереди: посчитать маску и сохранить в БД."""
+    image = storage.get_image(image_id, with_blobs=True)
+    if image is None or image.get("mask"):
+        return
+    mask = photo.background_mask(Image.open(io.BytesIO(image["original"])))
+    storage.save_mask(image_id, photo.png_bytes(mask))
+
+
+def _mask_status(image: dict[str, Any]) -> dict[str, Any]:
+    if image.get("mask") or image.get("has_mask"):
+        return {"status": "ready", "model": photo.engine.state, "message": None}
     if not photo.background_removal_available():
-        raise HTTPException(
-            503, "Удаление фона не установлено: выполните pip install -r requirements-bg.txt и перезапустите бэкенд"
-        )
-    original = Image.open(io.BytesIO(image["original"]))
-    mask = photo.background_mask(original)
-    png = photo.png_bytes(mask)
-    storage.save_mask(image["id"], png)
-    image["mask"] = png
-    return mask
+        raise HTTPException(503, _NOT_INSTALLED)
+    job = photo.engine.job(image["id"])
+    if job is None:
+        return {"status": "idle", "model": photo.engine.state, "message": None}
+    if not job.done():
+        return {"status": "processing", "model": photo.engine.state, "message": None}
+    exc = job.exception()
+    if exc is not None:
+        return {"status": "error", "model": photo.engine.state, "message": str(exc)}
+    return {"status": "ready", "model": photo.engine.state, "message": None}
+
+
+def _mask_for(image: dict[str, Any]) -> Image.Image:
+    """Маска фона для расчёта портрета: из БД или считаем (ждём очередь)."""
+    if not image.get("mask"):
+        if not photo.background_removal_available():
+            raise HTTPException(503, _NOT_INSTALLED)
+        try:
+            photo.engine.submit(image["id"], lambda: _compute_mask(image["id"])).result()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(500, f"Не удалось убрать фон: {exc}") from exc
+        fresh = storage.get_image(image["id"], with_blobs=True)
+        assert fresh is not None
+        image["mask"] = fresh["mask"]
+    return Image.open(io.BytesIO(image["mask"]))
 
 
 def _prepare(image: dict[str, Any], prep: photo.Prep) -> Image.Image:
@@ -295,6 +326,7 @@ def get_config() -> dict[str, Any]:
             "face_detection": photo.face_detection_available(),
             "background_removal": photo.background_removal_available(),
         },
+        "background": photo.engine.status(),
     }
 
 
@@ -373,11 +405,36 @@ def image_original(image_id: str) -> Response:
     return Response(image["original"], media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 
 
+class MaskStatus(BaseModel):
+    status: str = Field(description="idle — не запрашивали, processing — считается, ready — готова, error — ошибка")
+    model: str = Field(description="Состояние модели: idle, loading (скачивается/грузится), ready, error")
+    message: str | None = None
+
+
+@app.post("/api/images/{image_id}/mask", response_model=MaskStatus)
+def start_mask(image_id: str, response: Response) -> dict[str, Any]:
+    """Запускает удаление фона в фоне и сразу отвечает. Статус — GET того же адреса."""
+    image = _image_or_404(image_id)
+    status = _mask_status(image)
+    if status["status"] in ("idle", "error"):
+        photo.engine.submit(image_id, lambda: _compute_mask(image_id))
+        status = _mask_status(_image_or_404(image_id))
+    if status["status"] != "ready":
+        response.status_code = 202
+    return status
+
+
+@app.get("/api/images/{image_id}/mask", response_model=MaskStatus)
+def mask_status(image_id: str) -> dict[str, Any]:
+    return _mask_status(_image_or_404(image_id))
+
+
 @app.get("/api/images/{image_id}/mask.png")
 def image_mask(image_id: str) -> Response:
-    """Маска «человек/фон» в размере оригинала: белое — человек, чёрное — фон."""
+    """Готовая маска «человек/фон» в размере оригинала: белое — человек, чёрное — фон."""
     image = _image_or_404(image_id, with_blobs=True)
-    _mask_for(image)
+    if not image.get("mask"):
+        raise HTTPException(409, "Маска ещё не готова: сначала POST /api/images/{id}/mask и дождитесь status=ready")
     return Response(image["mask"], media_type="image/png", headers={"Cache-Control": "max-age=86400"})
 
 

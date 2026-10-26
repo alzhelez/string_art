@@ -119,11 +119,12 @@ interface ControlsProps {
   onChange: (p: Prep) => void;
   maskStatus: MaskStatus;
   maskError: string;
+  maskNote?: string;
 }
 
 const percent = (v: number) => `${v > 0 ? "+" : ""}${num(Math.round(v * 100))} %`;
 
-export function PhotoControls({ info, features, prep, onChange, maskStatus, maskError }: ControlsProps) {
+export function PhotoControls({ info, features, prep, onChange, maskStatus, maskError, maskNote }: ControlsProps) {
   const hasFace = info.faces.length > 0 && info.face_prep !== null;
   const faceDisabled = !features?.face_detection || !hasFace;
   const bgDisabled = !features?.background_removal || maskStatus === "loading";
@@ -198,10 +199,12 @@ export function PhotoControls({ info, features, prep, onChange, maskStatus, mask
           <span>Убрать фон</span>
         </label>
         <small className="option-note" role={maskStatus === "error" ? "alert" : undefined}>
-          {!features?.background_removal
-            ? "Не установлено на сервере: pip install -r requirements-bg.txt"
+          {features === null
+            ? "Нет связи с бэкендом — проверьте, что он запущен, и обновите страницу."
+            : !features.background_removal
+            ? "Не установлено на сервере. В папке backend выполните pip install -r requirements-bg.txt и перезапустите бэкенд."
             : maskStatus === "loading"
-              ? "Убираем фон… В самый первый раз сервер скачивает модель (~170 МБ), это может занять пару минут."
+              ? maskNote || "Убираем фон…"
               : maskStatus === "error"
                 ? maskError
                 : "Фон станет белым — все линии уйдут на человека."}

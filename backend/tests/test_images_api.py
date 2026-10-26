@@ -128,8 +128,24 @@ def test_legacy_upload_also_keeps_photo(client, project):
 
 
 # TC-API-24
+def _wait_mask(client, image_id, timeout=300):
+    import time
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        st = client.get(f"/api/images/{image_id}/mask").json()
+        if st["status"] in ("ready", "error"):
+            return st
+        time.sleep(0.3)
+    raise AssertionError("маска не посчиталась")
+
+
 @pytest.mark.skipif(not photo.background_removal_available(), reason="rembg не установлен")
 def test_background_removal(client, image):
+    assert client.get(f"/api/images/{image['id']}/mask.png").status_code == 409  # ещё не считали
+    r = client.post(f"/api/images/{image['id']}/mask")
+    assert r.status_code in (200, 202)
+    assert _wait_mask(client, image["id"])["status"] == "ready"
     r = client.get(f"/api/images/{image['id']}/mask.png")
     assert r.status_code == 200
     mask = np.asarray(Image.open(io.BytesIO(r.content)))
@@ -142,12 +158,54 @@ def test_background_removal(client, image):
     client.delete(f"/api/projects/{p['id']}")
 
 
+def test_mask_request_never_blocks(client, image, monkeypatch):
+    """Регрессия: долгая модель не должна держать HTTP-запрос (прокси Next.js рвёт его через 30 с)."""
+    import time
+
+    monkeypatch.setattr(photo, "background_removal_available", lambda: True)
+    monkeypatch.setattr(photo, "background_mask", lambda img: (time.sleep(1.0), Image.new("L", img.size, 255))[1])
+    t = time.time()
+    r = client.post(f"/api/images/{image['id']}/mask")
+    assert time.time() - t < 0.5
+    assert r.status_code == 202 and r.json()["status"] == "processing"
+    assert client.get(f"/api/images/{image['id']}/mask").json()["status"] == "processing"
+    assert _wait_mask(client, image["id"], timeout=10)["status"] == "ready"
+
+
+def test_mask_error_is_reported(client, image, monkeypatch):
+    monkeypatch.setattr(photo, "background_removal_available", lambda: True)
+
+    def boom(img):
+        raise RuntimeError("нет сети")
+
+    monkeypatch.setattr(photo, "background_mask", boom)
+    client.post(f"/api/images/{image['id']}/mask")
+    st = _wait_mask(client, image["id"], timeout=10)
+    assert st["status"] == "error" and "нет сети" in st["message"]
+
+
 def test_background_removal_unavailable(client, image, monkeypatch):
     monkeypatch.setattr(photo, "background_removal_available", lambda: False)
-    r = client.get(f"/api/images/{image['id']}/mask.png")
-    assert r.status_code == 503
-    assert "requirements-bg.txt" in r.json()["detail"]
-    assert client.get("/api/config").json()["features"]["background_removal"] is False
+    for r in (client.post(f"/api/images/{image['id']}/mask"), client.get(f"/api/images/{image['id']}/mask")):
+        assert r.status_code == 503
+        assert "requirements-bg.txt" in r.json()["detail"]
+    cfg = client.get("/api/config").json()
+    assert cfg["features"]["background_removal"] is False
+
+
+def test_config_does_not_import_heavy_rembg():
+    """Регрессия: /api/config раньше импортировал rembg, и на Windows первый запрос шёл >30 с."""
+    import subprocess
+    import sys
+
+    code = (
+        "import sys; from fastapi.testclient import TestClient; from app.main import app; "
+        "c = TestClient(app); assert c.get('/api/config').status_code == 200; "
+        "print('rembg' in sys.modules)"
+    )
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "False"
 
 
 def test_delete_project_removes_unused_image(client, image):

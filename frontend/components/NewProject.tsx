@@ -150,6 +150,7 @@ export function NewProject() {
             onChange={editor.setPrep}
             maskStatus={editor.maskStatus}
             maskError={editor.maskError}
+            maskNote={editor.maskNote}
           />
         )}
 

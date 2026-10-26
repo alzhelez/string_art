@@ -6,6 +6,26 @@ import { clampPrep, DEFAULT_PREP, normalizeCenter, type Prep } from "@/lib/prep"
 
 export type MaskStatus = "idle" | "loading" | "ready" | "error";
 
+interface MaskState {
+  status: "idle" | "processing" | "ready" | "error";
+  model: string;
+  message: string | null;
+}
+
+async function maskRequest(id: string, method: "GET" | "POST"): Promise<MaskState> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/images/${id}/mask`, { method });
+  } catch {
+    throw new Error("Сервер не отвечает. Проверьте, что бэкенд запущен.");
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok && res.status !== 202) {
+    throw new Error(typeof body.detail === "string" ? body.detail : `Ошибка ${res.status}`);
+  }
+  return body as MaskState;
+}
+
 async function loadImage(url: string): Promise<HTMLImageElement> {
   const img = new Image();
   img.decoding = "async";
@@ -20,6 +40,7 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
   const [mask, setMask] = useState<HTMLImageElement | null>(null);
   const [maskStatus, setMaskStatus] = useState<MaskStatus>("idle");
   const [maskError, setMaskError] = useState("");
+  const [maskNote, setMaskNote] = useState("");
   const [prep, setPrepState] = useState<Prep>({ ...DEFAULT_PREP, ...initial });
   const maskRequested = useRef<string | null>(null);
 
@@ -52,24 +73,40 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
     maskRequested.current = info.id;
     setMaskStatus("loading");
     setMaskError("");
+    setMaskNote("");
+    let alive = true;
     (async () => {
       try {
-        const res = await fetch(api.maskUrl(info.id));
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(typeof body.detail === "string" ? body.detail : `Ошибка ${res.status}`);
+        // Фон убирается на сервере в фоне: запускаем задачу и опрашиваем статус.
+        // Так ни один запрос не висит долго (прокси Next.js обрывает их через 30 с).
+        let st = await maskRequest(info.id, "POST");
+        while (alive && st.status !== "ready") {
+          if (st.status === "error") throw new Error(st.message ?? "Не удалось убрать фон");
+          setMaskNote(
+            st.model === "loading"
+              ? "Загружаем модель удаления фона. В самый первый раз она скачивается (~170 МБ) — это может занять несколько минут."
+              : "Убираем фон…",
+          );
+          await new Promise((r) => setTimeout(r, 1000));
+          st = await maskRequest(info.id, "GET");
         }
-        const url = URL.createObjectURL(await res.blob());
-        setMask(await loadImage(url));
+        if (!alive) return;
+        setMask(await loadImage(api.maskUrl(info.id)));
         setMaskStatus("ready");
+        setMaskNote("");
       } catch (e) {
+        if (!alive) return;
         maskRequested.current = null;
         setMaskStatus("error");
         setMaskError(e instanceof Error ? e.message : "Не удалось убрать фон");
         setPrepState((p) => ({ ...p, remove_background: false }));
       }
     })();
+    return () => {
+      alive = false;
+      if (maskRequested.current === info.id) maskRequested.current = null;
+    };
   }, [info, prep.remove_background]);
 
-  return { image, mask, maskStatus, maskError, prep, setPrep };
+  return { image, mask, maskStatus, maskError, maskNote, prep, setPrep };
 }

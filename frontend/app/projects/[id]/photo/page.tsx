@@ -84,6 +84,7 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
             onChange={editor.setPrep}
             maskStatus={editor.maskStatus}
             maskError={editor.maskError}
+            maskNote={editor.maskNote}
           />
           {project.current_step > 1 && (
             <p className="warning" data-testid="progress-warning">

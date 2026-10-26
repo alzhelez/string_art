@@ -11,9 +11,15 @@ cd "$ROOT/backend"
 [ -d .venv ] || "$PY" -m venv .venv
 # shellcheck disable=SC1091
 source .venv/bin/activate
-REQ="requirements.txt"
-[ "${WITH_BG:-0}" = "1" ] && REQ="requirements-bg.txt"
-pip install -q -r "$REQ"
+# Удаление фона ставится по умолчанию; отключить: WITH_BG=0 ./scripts/start.sh
+if [ "${WITH_BG:-1}" = "1" ]; then
+  pip install -q -r requirements-bg.txt || {
+    echo "⚠ Удаление фона не установилось — приложение запустится без него"
+    pip install -q -r requirements.txt
+  }
+else
+  pip install -q -r requirements.txt
+fi
 
 echo "▶ Фронтенд: зависимости"
 cd "$ROOT/frontend"
