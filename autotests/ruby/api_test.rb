@@ -85,7 +85,8 @@ class StringArtApiTest < Minitest::Test
     p = create_project(name: 'Тестовый портрет')
     assert_match(/\A[0-9a-f]{12}\z/, p['id'])
     assert_equal 'Тестовый портрет', p['name']
-    assert_equal 2000, p['line_count']
+    assert_includes 1000..5000, p['line_count']
+    assert_equal Api.json(Api.get("/api/projects/#{p['id']}/similarity"))['best_lines'], p['line_count']
     assert_equal 1, p['current_step']
     assert_equal 2.0, p['speed_sec']
     assert_equal 5001, p['sequence'].size
@@ -101,7 +102,7 @@ class StringArtApiTest < Minitest::Test
     p = Api.json(res)
     @created << p['id']
     assert_equal 'portrait', p['name']
-    assert_equal 2800, p['line_count']
+    assert_includes 1000..5000, p['line_count']
   end
 
   {
@@ -147,6 +148,7 @@ class StringArtApiTest < Minitest::Test
 
   def test_tc_api_11_patch_validation
     p = create_project
+    Api.patch("/api/projects/#{p['id']}", line_count: 2000)
     [{ speed_sec: 0.4 }, { speed_sec: 10.1 }, { current_step: 0 }, { current_step: 2001 },
      { line_count: 999 }, { line_count: 5001 }, { diameter_cm: 10 }, { name: '' }, { name: '   ' },
      { sequence: [1, 2, 3] }].each do |body|
@@ -155,7 +157,7 @@ class StringArtApiTest < Minitest::Test
   end
 
   def test_tc_api_12_13_lines_and_diameter
-    p = create_project
+    p = Api.json(Api.patch("/api/projects/#{create_project['id']}", line_count: 2000))
     Api.patch("/api/projects/#{p['id']}", current_step: 1900)
     clamped = Api.json(Api.patch("/api/projects/#{p['id']}", line_count: 1500))
     assert_equal 1500, clamped['current_step']
@@ -166,6 +168,7 @@ class StringArtApiTest < Minitest::Test
 
   def test_tc_api_14_steps
     p = create_project
+    Api.patch("/api/projects/#{p['id']}", line_count: 2000)
     page = Api.json(Api.get("/api/projects/#{p['id']}/steps?offset=0&limit=50"))
     assert_equal 2000, page['total']
     assert_equal 'A1', page['items'].first['from_label']
@@ -246,5 +249,29 @@ class StringArtApiTest < Minitest::Test
     assert_equal 1, body['current_step']
     assert_equal true, body.dig('prep', 'face_focus')
     refute_equal p['sequence'], body['sequence']
+  end
+
+  def test_tc_api_26_similarity
+    p = create_project
+    sim = Api.json(Api.get("/api/projects/#{p['id']}/similarity"))
+    assert_equal p['line_count'], sim['best_lines']
+    assert_equal 41, sim['curve'].size
+    assert_equal sim['best_score'], sim['curve'].map { |x| x['score'] }.max
+    small = Api.json(Api.get("/api/projects/#{p['id']}/similarity?diameter_cm=30"))
+    assert_operator small['best_lines'], :<=, sim['best_lines']
+  end
+
+  def test_tc_api_27_auto_tone
+    test_tc_api_19_image_upload
+    post = lambda do |body|
+      Api.http { |h| h.post("/api/images/#{@image['id']}/auto-tone", JSON.generate(body), 'Content-Type' => 'application/json') }
+    end
+    res = post.call(prep: @image['face_prep'], diameter_cm: 50)
+    assert_equal '200', res.code, res.body
+    t = Api.json(res)
+    assert_operator t['score_after'], :>=, t['score_before']
+    assert_equal 6, t['candidates']
+    assert_includes(-0.5..0.5, t['brightness'])
+    assert_equal '422', post.call(diameter_cm: 5).code
   end
 end

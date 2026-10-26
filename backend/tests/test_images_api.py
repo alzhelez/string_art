@@ -67,7 +67,8 @@ def test_original_and_prepared(client, image):
 def test_create_from_image_with_prep(client, image):
     prep = {"center_x": 0.45, "center_y": 0.3, "zoom": 2, "brightness": 0.1, "contrast": 0.2}
     p = _create(client, image["id"], name="Кадр", diameter_cm=60, prep=prep)
-    assert p["name"] == "Кадр" and p["diameter_cm"] == 60 and p["line_count"] == 2400
+    assert p["name"] == "Кадр" and p["diameter_cm"] == 60
+    assert p["line_count"] == client.get(f"/api/projects/{p['id']}/similarity").json()["best_lines"]
     assert p["image_id"] == image["id"]
     assert p["prep"] == {**prep, "remove_background": False, "face_focus": False}
     plain = _create(client, image["id"], name="Без правок")
@@ -212,3 +213,17 @@ def test_delete_project_removes_unused_image(client, image):
     p = _create(client, image["id"])
     client.delete(f"/api/projects/{p['id']}")
     assert client.get(f"/api/images/{image['id']}").status_code == 404
+
+
+# TC-API-27
+def test_auto_tone(client, image):
+    r = client.post(f"/api/images/{image['id']}/auto-tone", json={"diameter_cm": 50})
+    assert r.status_code == 200, r.text
+    t = r.json()
+    assert -0.5 <= t["brightness"] <= 0.5 and -0.5 <= t["contrast"] <= 1.0
+    assert t["score_after"] >= t["score_before"]  # хуже, чем без коррекций, не бывает
+    assert t["candidates"] == 6
+    assert 1000 <= t["best_lines"] <= 3000
+    bad = client.post(f"/api/images/{image['id']}/auto-tone", json={"diameter_cm": 5})
+    assert bad.status_code == 422
+    assert client.post("/api/images/000000000000/auto-tone", json={}).status_code == 404

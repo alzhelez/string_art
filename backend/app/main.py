@@ -22,6 +22,7 @@ from .geometry import arc_spacing, nail_label
 from .image_prep import ImageError, gray_png, load_image, target_map
 from .pdf import build_instructions_pdf
 from .render import render_png
+from .similarity import auto_tone, best_point, project_similarity, similarity_curve
 from .thread import cumulative_lengths_m, recommended_lines, thread_stats
 
 
@@ -115,6 +116,35 @@ class ProjectUpdate(BaseModel):
     line_count: int | None = Field(default=None, ge=config.MIN_LINES, le=config.MAX_LINES)
     current_step: int | None = Field(default=None, ge=1, le=config.MAX_LINES)
     speed_sec: float | None = Field(default=None, ge=config.MIN_SPEED_SEC, le=config.MAX_SPEED_SEC)
+
+
+class SimilarityPoint(BaseModel):
+    lines: int
+    score: float
+
+
+class SimilarityOut(BaseModel):
+    diameter_cm: float
+    best_lines: int = Field(description="Число линий с максимальным сходством с фото")
+    best_score: float = Field(description="Сходство 0..1 (корреляция тонов при взгляде с ~2 м)")
+    curve: list[SimilarityPoint]
+
+
+class AutoToneIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prep: PrepIn = Field(default_factory=PrepIn)
+    diameter_cm: float = Field(config.DEFAULT_DIAMETER_CM, ge=config.MIN_DIAMETER_CM, le=config.MAX_DIAMETER_CM)
+
+
+class AutoToneOut(BaseModel):
+    brightness: float
+    contrast: float
+    score_before: float
+    score_after: float
+    lines_before: int
+    best_lines: int
+    candidates: int
 
 
 class CreateFromImage(BaseModel):
@@ -358,12 +388,17 @@ def create_project_from_image(body: CreateFromImage) -> dict[str, Any]:
     return _create_from(image, name, body.diameter_cm, photo.clamp_prep(body.prep.to_prep()))
 
 
+def _best_lines(sequence: list[int], gray: Image.Image, diameter_cm: float) -> int:
+    """Рекомендация: число линий с максимальным сходством с подготовленным фото."""
+    return best_point(similarity_curve(sequence, gray, diameter_cm))[0]
+
+
 def _create_from(image: dict[str, Any], name: str, diameter_cm: float, prep: photo.Prep) -> dict[str, Any]:
     sequence, gray = _generate(image, prep)
     project = storage.create_project(
         name=name,
         diameter_cm=round(diameter_cm, 1),
-        line_count=recommended_lines(diameter_cm),
+        line_count=_best_lines(sequence, gray, diameter_cm),
         speed_sec=config.DEFAULT_SPEED_SEC,
         sequence=sequence,
         source_png=gray_png(gray),
@@ -382,7 +417,13 @@ def update_photo(project_id: str, body: PrepIn) -> dict[str, Any]:
     image = _image_or_404(project["image_id"], with_blobs=True)
     prep = photo.clamp_prep(body.to_prep())
     sequence, gray = _generate(image, prep)
-    updated = storage.replace_photo(project_id, sequence=sequence, source_png=gray_png(gray), prep=prep.to_dict())
+    updated = storage.replace_photo(
+        project_id,
+        sequence=sequence,
+        source_png=gray_png(gray),
+        prep=prep.to_dict(),
+        line_count=_best_lines(sequence, gray, project["diameter_cm"]),
+    )
     assert updated is not None
     return _detail(updated)
 
@@ -438,6 +479,29 @@ def image_mask(image_id: str) -> Response:
     return Response(image["mask"], media_type="image/png", headers={"Cache-Control": "max-age=86400"})
 
 
+@app.post("/api/images/{image_id}/auto-tone", response_model=AutoToneOut)
+def image_auto_tone(image_id: str, body: AutoToneIn) -> dict[str, Any]:
+    """Подбирает яркость и контраст под нити: перебор вариантов по сходству результата с фото.
+
+    Кадр, фон и «Выделить лицо» берутся из prep как есть. Занимает 5–15 секунд.
+    """
+    image = _image_or_404(image_id, with_blobs=True)
+    base = photo.clamp_prep(body.prep.to_prep())
+    if base.face_focus and not image["faces"]:
+        raise HTTPException(422, "На фото не найдено лицо — снимите галочку «Выделить лицо»")
+    original = Image.open(io.BytesIO(image["original"]))
+    mask = _mask_for(image) if base.remove_background else None
+    importance = None
+    if base.face_focus:
+        importance = photo.face_importance(image["width"], image["height"], base, photo.Box(**image["faces"][0]))
+
+    def prepare(b: float, c: float) -> Image.Image:
+        p = photo.Prep(**{**base.to_dict(), "brightness": b, "contrast": c})
+        return photo.prepare_gray(original, p, mask)
+
+    return auto_tone(prepare, body.diameter_cm, importance)
+
+
 @app.get("/api/images/{image_id}/prepared.png")
 def image_prepared(image_id: str, prep: Annotated[PrepIn, Query()]) -> Response:
     """Ровно то, что получит алгоритм (400×400, оттенки серого)."""
@@ -478,6 +542,19 @@ def delete_project(project_id: str) -> Response:
     _get_or_404(project_id)
     storage.delete_project(project_id)
     return Response(status_code=204)
+
+
+@app.get("/api/projects/{project_id}/similarity", response_model=SimilarityOut)
+def get_similarity(
+    project_id: str,
+    diameter_cm: Annotated[float | None, Query(ge=config.MIN_DIAMETER_CM, le=config.MAX_DIAMETER_CM)] = None,
+) -> dict[str, Any]:
+    """Кривая «сходство с фото ↔ число линий» и рекомендация для диаметра (по умолчанию — текущего)."""
+    p = _get_or_404(project_id)
+    version = format(hash(bytes(p["sequence"])), "x")
+    source = storage.get_source_png(project_id)
+    assert source is not None
+    return project_similarity(project_id, version, p["sequence"], source, diameter_cm or p["diameter_cm"])
 
 
 @app.get("/api/projects/{project_id}/steps", response_model=StepsPage)

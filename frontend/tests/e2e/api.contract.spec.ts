@@ -9,9 +9,12 @@ import { createProject, FACE_JPG, NOT_IMAGE, PORTRAIT_JPG, PORTRAIT_PNG, type Ap
 
 test.describe("API", () => {
   let project: ApiProject;
+  let created: ApiProject; // как вернул POST — с рекомендованным числом линий
 
   test.beforeEach(async ({ request }) => {
-    project = await createProject(request, { name: "API-тест" });
+    created = await createProject(request, { name: "API-тест" });
+    // Дальше тесты рассчитывают на ровно 2000 линий — рекомендация зависит от фото
+    project = await (await request.patch(`/api/projects/${created.id}`, { data: { line_count: 2000 } })).json();
   });
 
   test.afterEach(async ({ request }) => {
@@ -50,9 +53,12 @@ test.describe("API", () => {
     });
   });
 
-  test("TC-API-03 создание проекта", async () => {
+  test("TC-API-03 создание проекта", async ({ request }) => {
     expect(project.id).toMatch(/^[0-9a-f]{12}$/);
     expect(project.name).toBe("API-тест");
+    // Рекомендация — точка максимального сходства с фото (TC-API-26)
+    const sim = await (await request.get(`/api/projects/${project.id}/similarity`)).json();
+    expect(created.line_count).toBe(sim.best_lines);
     expect(project.line_count).toBe(2000);
     expect(project.current_step).toBe(1);
     expect(project.speed_sec).toBe(2);
@@ -74,7 +80,9 @@ test.describe("API", () => {
     const p = await createProject(request, { file: PORTRAIT_PNG, diameter: 70 });
     expect(p.name).toBe("portrait");
     expect(p.diameter_cm).toBe(70);
-    expect(p.line_count).toBe(2800);
+    const sim = await (await request.get(`/api/projects/${p.id}/similarity`)).json();
+    expect(sim.diameter_cm).toBe(70);
+    expect(p.line_count).toBe(sim.best_lines);
     await request.delete(`/api/projects/${p.id}`);
   });
 
@@ -181,5 +189,37 @@ test.describe("API", () => {
     expect(updated.sequence).not.toEqual(p.sequence);
     expect((await request.put(`/api/projects/${p.id}/photo`, { data: { zoom: 10 } })).status()).toBe(422);
     await request.delete(`/api/projects/${p.id}`);
+  });
+
+  test("TC-API-26 кривая сходства с фото и рекомендация", async ({ request }) => {
+    const sim = await (await request.get(`/api/projects/${project.id}/similarity`)).json();
+    const lines = sim.curve.map((p: { lines: number }) => p.lines);
+    expect(lines[0]).toBe(C.MIN_LINES);
+    expect(lines.at(-1)).toBe(C.MAX_LINES);
+    const best = sim.curve.reduce((a: { score: number }, b: { score: number }) => (b.score > a.score ? b : a));
+    expect(sim.best_lines).toBe(best.lines);
+    expect(sim.best_score).toBeGreaterThan(0.5);
+    const small = await (await request.get(`/api/projects/${project.id}/similarity?diameter_cm=30`)).json();
+    const big = await (await request.get(`/api/projects/${project.id}/similarity?diameter_cm=100`)).json();
+    expect(small.best_lines).toBeLessThanOrEqual(sim.best_lines);
+    expect(big.best_lines).toBeGreaterThanOrEqual(sim.best_lines);
+    expect((await request.get(`/api/projects/${project.id}/similarity?diameter_cm=10`)).status()).toBe(422);
+  });
+
+  test("TC-API-27 автонастройка фото", async ({ request }) => {
+    test.setTimeout(90_000);
+    const img = await (
+      await request.post("/api/images", {
+        multipart: { file: { name: "face.jpg", mimeType: "image/jpeg", buffer: fs.readFileSync(FACE_JPG) } },
+      })
+    ).json();
+    const res = await request.post(`/api/images/${img.id}/auto-tone`, { data: { prep: img.face_prep, diameter_cm: 50 } });
+    expect(res.status(), await res.text()).toBe(200);
+    const t = await res.json();
+    expect(t.score_after).toBeGreaterThanOrEqual(t.score_before);
+    expect(t.brightness).toBeGreaterThanOrEqual(-0.5);
+    expect(t.brightness).toBeLessThanOrEqual(0.5);
+    expect(t.candidates).toBe(6);
+    expect((await request.post(`/api/images/${img.id}/auto-tone`, { data: { diameter_cm: 5 } })).status()).toBe(422);
   });
 });

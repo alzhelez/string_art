@@ -17,6 +17,23 @@ export interface ImageInfo {
   face_prep: Prep | null;
 }
 
+export interface Similarity {
+  diameter_cm: number;
+  best_lines: number;
+  best_score: number;
+  curve: { lines: number; score: number }[];
+}
+
+export interface AutoTone {
+  brightness: number;
+  contrast: number;
+  score_before: number;
+  score_after: number;
+  lines_before: number;
+  best_lines: number;
+  candidates: number;
+}
+
 export interface Features {
   face_detection: boolean;
   background_removal: boolean;
@@ -112,6 +129,16 @@ export const api = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(prep),
+    }),
+  similarity: (id: string, diameterCm?: number) =>
+    request<Similarity>(
+      `/api/projects/${id}/similarity${diameterCm !== undefined ? `?diameter_cm=${diameterCm}` : ""}`,
+    ),
+  autoTone: (imageId: string, prep: Prep, diameterCm: number) =>
+    request<AutoTone>(`/api/images/${imageId}/auto-tone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prep, diameter_cm: diameterCm }),
     }),
   imageUrl: (id: string) => `/api/images/${id}/original.jpg`,
   maskUrl: (id: string) => `/api/images/${id}/mask.png`,

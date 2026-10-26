@@ -29,17 +29,20 @@ def test_config(client):
 
 
 # TC-API-03
-def test_create_project(project):
+def test_create_project(client, project):
     assert len(project["id"]) == 12
     assert project["name"] == "Тестовый портрет"
     assert project["diameter_cm"] == 50
-    assert project["line_count"] == 2000  # 40 линий × 50 см
+    # рекомендация — максимум сходства с фото для этого диаметра
+    sim = client.get(f"/api/projects/{project['id']}/similarity").json()
+    assert project["line_count"] == sim["best_lines"]
+    assert 1000 <= project["line_count"] <= 5000
     assert project["current_step"] == 1
     assert project["speed_sec"] == 2.0
     assert len(project["sequence"]) == 5001
     assert project["sequence"][0] == 0  # старт A1
     stats = project["stats"]
-    assert stats["steps"] == 2000
+    assert stats["steps"] == project["line_count"]
     assert stats["total_length_m"] == pytest.approx(stats["raw_length_m"] * 1.15, rel=1e-3)
     assert stats["spool_m"] * stats["spool_count"] >= stats["total_length_m"]
 
@@ -51,7 +54,8 @@ def test_create_uses_filename_when_no_name(client, portrait_png):
     body = r.json()
     assert body["name"] == "Бабушка"
     assert body["diameter_cm"] == 70
-    assert body["line_count"] == 2800
+    sim70 = client.get(f"/api/projects/{body['id']}/similarity").json()
+    assert sim70["diameter_cm"] == 70 and body["line_count"] == sim70["best_lines"]
     client.delete(f"/api/projects/{body['id']}")
 
 
@@ -125,12 +129,14 @@ def test_speed_is_rounded_to_tenth(client, project, value, saved):
     ],
 )
 def test_patch_validation(client, project, body):
+    client.patch(f"/api/projects/{project['id']}", json={"line_count": 2000})
     assert client.patch(f"/api/projects/{project['id']}", json=body).status_code == 422
 
 
 # TC-API-12
 def test_reducing_lines_clamps_progress(client, project):
     pid = project["id"]
+    client.patch(f"/api/projects/{pid}", json={"line_count": 2000})
     client.patch(f"/api/projects/{pid}", json={"current_step": 1900})
     body = client.patch(f"/api/projects/{pid}", json={"line_count": 1500}).json()
     assert body["line_count"] == 1500
@@ -149,6 +155,7 @@ def test_diameter_changes_thread_but_not_sequence(client, project):
 # TC-API-14
 def test_steps_pagination_and_continuity(client, project):
     pid = project["id"]
+    client.patch(f"/api/projects/{pid}", json={"line_count": 2000})
     first = client.get(f"/api/projects/{pid}/steps", params={"offset": 0, "limit": 50}).json()
     assert first["total"] == 2000 and len(first["items"]) == 50
     items = first["items"]
@@ -207,3 +214,21 @@ def test_root_redirects_to_app(client):
     assert r.headers["location"] == "http://localhost:3000"
     assert client.get("/favicon.ico").status_code == 204
     assert "localhost:3000" in client.get("/api").text
+
+
+# TC-API-26
+def test_similarity_curve(client, project):
+    pid = project["id"]
+    sim = client.get(f"/api/projects/{pid}/similarity").json()
+    assert sim["diameter_cm"] == 50
+    lines = [p["lines"] for p in sim["curve"]]
+    assert lines[0] == 1000 and lines[-1] == 5000 and all(b - a == 100 for a, b in zip(lines, lines[1:]))
+    best = max(sim["curve"], key=lambda p: p["score"])
+    assert sim["best_lines"] == best["lines"] and sim["best_score"] == best["score"]
+    assert 0.5 < sim["best_score"] <= 1
+    # на маленьком круге та же леска темнее → максимум раньше, на большом — позже
+    small = client.get(f"/api/projects/{pid}/similarity", params={"diameter_cm": 30}).json()
+    big = client.get(f"/api/projects/{pid}/similarity", params={"diameter_cm": 100}).json()
+    assert small["best_lines"] <= sim["best_lines"] <= big["best_lines"]
+    assert client.get(f"/api/projects/{pid}/similarity", params={"diameter_cm": 10}).status_code == 422
+    assert client.get("/api/projects/000000000000/similarity").status_code == 404

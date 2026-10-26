@@ -39,7 +39,7 @@ export interface ApiProject {
 
 export async function createProject(
   request: APIRequestContext,
-  opts: { name?: string; diameter?: number; file?: string } = {},
+  opts: { name?: string; diameter?: number; file?: string; lines?: number } = {},
 ): Promise<ApiProject> {
   const file = opts.file ?? PORTRAIT_JPG;
   const multipart: Record<string, string | { name: string; mimeType: string; buffer: Buffer }> = {
@@ -49,7 +49,16 @@ export async function createProject(
   if (opts.name) multipart.name = opts.name;
   const res = await request.post("/api/projects", { multipart });
   expect(res.status(), await res.text()).toBe(201);
-  return res.json();
+  const project: ApiProject = await res.json();
+  if (opts.lines === undefined) return project;
+  // Рекомендованное число линий зависит от фото; тестам с конкретными номерами шагов нужно точное
+  const patched = await request.patch(`/api/projects/${project.id}`, { data: { line_count: opts.lines } });
+  expect(patched.ok()).toBeTruthy();
+  return patched.json();
 }
+
+/** «2 200» с любым пробелом-разделителем (в интерфейсе — неразрывный). */
+export const numRe = (n: number) =>
+  new RegExp(`^${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\\s")}$`);
 
 export const uniqueName = (prefix: string) => `${prefix} ${Date.now().toString(36)}`;

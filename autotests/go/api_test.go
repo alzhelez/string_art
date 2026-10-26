@@ -58,7 +58,7 @@ func TestCreateProject_TC_API_03(t *testing.T) {
 	if !regexp.MustCompile(`^[0-9a-f]{12}$`).MatchString(p.ID) {
 		t.Errorf("id = %q", p.ID)
 	}
-	if p.Name != "Тестовый портрет" || p.LineCount != 2000 || p.CurrentStep != 1 || p.SpeedSec != 2.0 {
+	if p.Name != "Тестовый портрет" || p.LineCount < 1000 || p.LineCount > 5000 || p.CurrentStep != 1 || p.SpeedSec != 2.0 {
 		t.Errorf("проект: %+v", p)
 	}
 	if len(p.Sequence) != 5001 || p.Sequence[0] != 0 {
@@ -77,7 +77,7 @@ func TestCreateFromPng_TC_API_04(t *testing.T) {
 	expectStatus(t, res, data, 201)
 	p := decode[Project](t, data)
 	defer do(t, http.MethodDelete, "/api/projects/"+p.ID, nil, "")
-	if p.Name != "portrait" || p.LineCount != 2800 {
+	if p.Name != "portrait" || p.LineCount < 1000 || p.LineCount > 5000 {
 		t.Errorf("name=%q lines=%d", p.Name, p.LineCount)
 	}
 }
@@ -146,6 +146,7 @@ func TestProgressAndSpeed_TC_API_09_10(t *testing.T) {
 
 func TestPatchValidation_TC_API_11(t *testing.T) {
 	p := createProject(t, "Валидация", "50")
+	doJSON(t, http.MethodPatch, "/api/projects/"+p.ID, map[string]any{"line_count": 2000})
 	bad := []map[string]any{
 		{"speed_sec": 0.4}, {"speed_sec": 10.1}, {"current_step": 0}, {"current_step": 2001},
 		{"line_count": 999}, {"line_count": 5001}, {"diameter_cm": 10}, {"name": ""}, {"name": "   "},
@@ -161,6 +162,8 @@ func TestPatchValidation_TC_API_11(t *testing.T) {
 
 func TestLinesAndDiameter_TC_API_12_13(t *testing.T) {
 	p := createProject(t, "Линии", "50")
+	_, data0 := doJSON(t, http.MethodPatch, "/api/projects/"+p.ID, map[string]any{"line_count": 2000})
+	p = decode[Project](t, data0)
 	doJSON(t, http.MethodPatch, "/api/projects/"+p.ID, map[string]any{"current_step": 1900})
 	res, data := doJSON(t, http.MethodPatch, "/api/projects/"+p.ID, map[string]any{"line_count": 1500})
 	expectStatus(t, res, data, 200)
@@ -190,6 +193,7 @@ func TestSteps_TC_API_14(t *testing.T) {
 		Items []step `json:"items"`
 	}
 	p := createProject(t, "Шаги", "50")
+	doJSON(t, http.MethodPatch, "/api/projects/"+p.ID, map[string]any{"line_count": 2000})
 	res, data := do(t, http.MethodGet, "/api/projects/"+p.ID+"/steps?offset=0&limit=50", nil, "")
 	expectStatus(t, res, data, 200)
 	pg := decode[page](t, data)
@@ -320,5 +324,52 @@ func TestCreateFromImageAndEditPhoto_TC_API_21_23(t *testing.T) {
 		t.Errorf("после правки фото: step=%d prep=%v", upd.CurrentStep, upd.Prep)
 	}
 	res, data = doJSON(t, http.MethodPut, "/api/projects/"+p.ID+"/photo", map[string]any{"zoom": 10})
+	expectStatus(t, res, data, 422)
+}
+
+func TestSimilarity_TC_API_26(t *testing.T) {
+	type sim struct {
+		Diameter  float64 `json:"diameter_cm"`
+		BestLines int     `json:"best_lines"`
+		BestScore float64 `json:"best_score"`
+		Curve     []struct {
+			Lines int     `json:"lines"`
+			Score float64 `json:"score"`
+		} `json:"curve"`
+	}
+	p := createProject(t, "Сходство", "50")
+	res, data := do(t, http.MethodGet, "/api/projects/"+p.ID+"/similarity", nil, "")
+	expectStatus(t, res, data, 200)
+	s := decode[sim](t, data)
+	if s.BestLines != p.LineCount || len(s.Curve) != 41 || s.BestScore <= 0.5 {
+		t.Fatalf("сходство: best=%d line_count=%d points=%d score=%v", s.BestLines, p.LineCount, len(s.Curve), s.BestScore)
+	}
+	for _, pt := range s.Curve {
+		if pt.Score > s.BestScore {
+			t.Fatalf("точка %d лучше рекомендации", pt.Lines)
+		}
+	}
+	_, data = do(t, http.MethodGet, "/api/projects/"+p.ID+"/similarity?diameter_cm=30", nil, "")
+	if small := decode[sim](t, data); small.BestLines > s.BestLines {
+		t.Errorf("на 30 см рекомендация %d больше, чем на 50 см %d", small.BestLines, s.BestLines)
+	}
+}
+
+func TestAutoTone_TC_API_27(t *testing.T) {
+	img := uploadImage(t)
+	type tone struct {
+		Brightness  float64 `json:"brightness"`
+		Contrast    float64 `json:"contrast"`
+		ScoreBefore float64 `json:"score_before"`
+		ScoreAfter  float64 `json:"score_after"`
+		Candidates  int     `json:"candidates"`
+	}
+	res, data := doJSON(t, http.MethodPost, "/api/images/"+img.ID+"/auto-tone", map[string]any{"prep": img.FacePrep, "diameter_cm": 50})
+	expectStatus(t, res, data, 200)
+	r := decode[tone](t, data)
+	if r.ScoreAfter < r.ScoreBefore || r.Candidates != 6 || r.Brightness < -0.5 || r.Brightness > 0.5 {
+		t.Fatalf("автонастройка: %+v", r)
+	}
+	res, data = doJSON(t, http.MethodPost, "/api/images/"+img.ID+"/auto-tone", map[string]any{"diameter_cm": 5})
 	expectStatus(t, res, data, 422)
 }

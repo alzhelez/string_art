@@ -66,4 +66,19 @@ public class PhotoEditorTest extends BaseApiTest {
         api().contentType(ContentType.JSON).body("{\"zoom\": 10}")
                 .put("/api/projects/" + id + "/photo").then().statusCode(422);
     }
+
+    @Test(description = "TC-API-27 автонастройка фото")
+    @Story("TC-API-27")
+    public void autoToneImprovesSimilarity() {
+        JsonPath img = uploadImage();
+        String id = img.getString("id");
+        Map<String, Object> body = Map.of("prep", img.getMap("face_prep"), "diameter_cm", 50);
+        JsonPath t = api().contentType(ContentType.JSON).body(body)
+                .post("/api/images/" + id + "/auto-tone").then().statusCode(200).extract().jsonPath();
+        assertThat(t.getDouble("score_after")).isGreaterThanOrEqualTo(t.getDouble("score_before"));
+        assertThat(t.getInt("candidates")).isEqualTo(6);
+        assertThat(t.getDouble("brightness")).isBetween(-0.5, 0.5);
+        api().contentType(ContentType.JSON).body("{\"diameter_cm\": 5}")
+                .post("/api/images/" + id + "/auto-tone").then().statusCode(422);
+    }
 }

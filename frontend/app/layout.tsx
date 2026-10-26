@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
+import { AppHeader, THEME_SCRIPT } from "@/components/AppHeader";
 import "@fontsource/golos-text/400.css";
 import "@fontsource/golos-text/500.css";
 import "@fontsource/golos-text/600.css";
@@ -12,18 +12,23 @@ export const metadata: Metadata = {
   description: "Превращает фото в круглую картину из лески: 240 гвоздей, пошаговая инструкция, расчёт катушки.",
 };
 
-export const viewport: Viewport = { themeColor: "#e6eaee", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eef0f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1216" },
+  ],
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
+    <html lang="ru" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
-        <header className="site-header">
-          <Link href="/" className="brand">
-            Нитеграф
-          </Link>
-          <span className="brand-note">портреты из лески на 240 гвоздях</span>
-        </header>
+        <AppHeader />
         <main className="site-main">{children}</main>
       </body>
     </html>

@@ -25,11 +25,11 @@ export default function WeavePage() {
 
   if (error) {
     return (
-      <div className="studio-missing">
+      <div className="page-empty">
         <p className="form-error" role="alert">
           {error}
         </p>
-        <Link href="/" className="btn ghost">
+        <Link href="/" className="btn secondary">
           К списку портретов
         </Link>
       </div>

@@ -22,6 +22,7 @@ public class ProjectValidationTest extends BaseApiTest {
     @BeforeClass(alwaysRun = true)
     public void setUp() throws IOException {
         projectId = createProject("Валидация", "50").getString("id");
+        patch(projectId, "{\"line_count\": 2000}").then().statusCode(200);
         emptyFile = Files.createTempFile("empty", ".jpg").toFile();
         emptyFile.deleteOnExit();
     }

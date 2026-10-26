@@ -95,7 +95,9 @@ public class ApiTests : IClassFixture<ApiFixture>
         var p = await _api.CreateProject("Тестовый портрет");
         Assert.Matches("^[0-9a-f]{12}$", p["id"]!.GetValue<string>());
         Assert.Equal("Тестовый портрет", p["name"]!.GetValue<string>());
-        Assert.Equal(2000, p["line_count"]!.GetValue<int>());
+        Assert.InRange(p["line_count"]!.GetValue<int>(), 1000, 5000);
+        var sim = await ApiFixture.Json(await _api.Http.GetAsync($"/api/projects/{p["id"]!.GetValue<string>()}/similarity"));
+        Assert.Equal(sim["best_lines"]!.GetValue<int>(), p["line_count"]!.GetValue<int>());
         Assert.Equal(1, p["current_step"]!.GetValue<int>());
         var seq = p["sequence"]!.AsArray();
         Assert.Equal(5001, seq.Count);
@@ -115,7 +117,7 @@ public class ApiTests : IClassFixture<ApiFixture>
         var p = await ApiFixture.Json(res);
         await _api.Http.DeleteAsync($"/api/projects/{p["id"]!.GetValue<string>()}");
         Assert.Equal("portrait", p["name"]!.GetValue<string>());
-        Assert.Equal(2800, p["line_count"]!.GetValue<int>());
+        Assert.InRange(p["line_count"]!.GetValue<int>(), 1000, 5000);
     }
 
     [Theory(DisplayName = "TC-API-05/06 валидация загрузки")]
@@ -176,6 +178,7 @@ public class ApiTests : IClassFixture<ApiFixture>
     public async Task PatchValidation(object body)
     {
         var id = (await _api.CreateProject())["id"]!.GetValue<string>();
+        await _api.Patch(id, new { line_count = 2000 });
         Assert.Equal(422, (int)(await _api.Patch(id, body)).StatusCode);
     }
 
@@ -183,6 +186,7 @@ public class ApiTests : IClassFixture<ApiFixture>
     public async Task ClampProgress()
     {
         var id = (await _api.CreateProject())["id"]!.GetValue<string>();
+        await _api.Patch(id, new { line_count = 2000 });
         await _api.Patch(id, new { current_step = 1900 });
         var body = await ApiFixture.Json(await _api.Patch(id, new { line_count = 1500 }));
         Assert.Equal(1500, body["current_step"]!.GetValue<int>());
@@ -276,5 +280,35 @@ public class ApiTests : IClassFixture<ApiFixture>
         {
             await _api.Http.DeleteAsync($"/api/projects/{id}");
         }
+    }
+
+    [Fact(DisplayName = "TC-API-26 рекомендация по максимуму сходства")]
+    public async Task Similarity()
+    {
+        var p = await _api.CreateProject();
+        var id = p["id"]!.GetValue<string>();
+        var sim = await ApiFixture.Json(await _api.Http.GetAsync($"/api/projects/{id}/similarity"));
+        var scores = sim["curve"]!.AsArray().Select(x => x!["score"]!.GetValue<double>()).ToList();
+        Assert.Equal(41, scores.Count);
+        Assert.Equal(scores.Max(), sim["best_score"]!.GetValue<double>(), 6);
+        Assert.Equal(p["line_count"]!.GetValue<int>(), sim["best_lines"]!.GetValue<int>());
+    }
+
+    [Fact(DisplayName = "TC-API-27 автонастройка фото")]
+    public async Task AutoTone()
+    {
+        var img = await UploadFace();
+        var id = img["id"]!.GetValue<string>();
+        var body = new JsonObject { ["prep"] = img["face_prep"]!.DeepClone(), ["diameter_cm"] = 50 };
+        var res = await _api.Http.PostAsync($"/api/images/{id}/auto-tone",
+            new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var t = await ApiFixture.Json(res);
+        Assert.True(t["score_after"]!.GetValue<double>() >= t["score_before"]!.GetValue<double>());
+        Assert.Equal(6, t["candidates"]!.GetValue<int>());
+        Assert.InRange(t["brightness"]!.GetValue<double>(), -0.5, 0.5);
+        var bad = await _api.Http.PostAsync($"/api/images/{id}/auto-tone",
+            new StringContent("{\"diameter_cm\": 5}", Encoding.UTF8, "application/json"));
+        Assert.Equal((HttpStatusCode)422, bad.StatusCode);
     }
 }

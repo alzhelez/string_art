@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
-import { usePhotoEditor } from "@/hooks/usePhotoEditor";
+import { useAutoPrep, usePhotoEditor } from "@/hooks/usePhotoEditor";
 import { api, ApiError, type Features, type ImageInfo } from "@/lib/api";
 import { DEFAULT_DIAMETER_CM } from "@/lib/constants";
 import { downscaleImage } from "@/lib/image";
@@ -10,6 +10,7 @@ import { DEFAULT_PREP } from "@/lib/prep";
 import { DiameterPicker } from "./DiameterPicker";
 import { NailRing } from "./NailRing";
 import { PhotoControls, PhotoViewport } from "./PhotoEditor";
+import { Icon } from "./ui/Icon";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/bmp,image/gif,image/tiff";
 
@@ -25,6 +26,7 @@ export function NewProject() {
   const [stage, setStage] = useState<"pick" | "uploading" | "edit" | "creating">("pick");
   const [error, setError] = useState("");
   const editor = usePhotoEditor(info);
+  const auto = useAutoPrep(info, features, editor, diameter);
 
   useEffect(() => {
     api.features().then(setFeatures).catch(() => setFeatures(null));
@@ -104,6 +106,7 @@ export function NewProject() {
         >
           <NailRing className="drop-ring" />
           <span className="drop-text">
+            <Icon name="image" size={28} />
             {stage === "uploading" ? "Загружаем фото…" : "Перетащите фото в круг"}
             {stage !== "uploading" && <small>или нажмите, чтобы выбрать файл</small>}
           </span>
@@ -119,12 +122,12 @@ export function NewProject() {
         </label>
       )}
 
-      <div className="new-form">
-        <h1 id="new-title">Новый портрет</h1>
+      <div className="inspector new-form">
+        <h1 id="new-title">{info ? "Настройте фото" : "Портрет из нитей по вашему фото"}</h1>
         {!info && (
           <p className="lead">
-            Лучше всего получаются фото лица крупным планом. После загрузки можно выбрать кадр, поправить яркость и
-            контраст, найти лицо и убрать фон.
+            Загрузите снимок — приложение рассчитает, как натянуть чёрную леску на 240 гвоздей, чтобы получился
+            портрет, и проведёт по каждому шагу.
           </p>
         )}
 
@@ -151,6 +154,7 @@ export function NewProject() {
             maskStatus={editor.maskStatus}
             maskError={editor.maskError}
             maskNote={editor.maskNote}
+            auto={auto}
           />
         )}
 
@@ -165,12 +169,13 @@ export function NewProject() {
             type="button"
             className="btn primary"
             onClick={submit}
-            disabled={!info || busy || editor.maskStatus === "loading"}
+            disabled={!info || busy || editor.maskStatus === "loading" || auto.busy}
           >
+            <Icon name="sparkle" size={18} />
             {stage === "creating" ? "Считаем линии…" : "Сделать портрет"}
           </button>
           {info && !busy && (
-            <button type="button" className="btn ghost" onClick={reset}>
+            <button type="button" className="btn secondary" onClick={reset}>
               Другое фото
             </button>
           )}

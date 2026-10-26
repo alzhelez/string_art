@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { MaskStatus } from "@/hooks/usePhotoEditor";
-import type { Features, ImageInfo } from "@/lib/api";
+import type { AutoStage, MaskStatus } from "@/hooks/usePhotoEditor";
+import type { AutoTone, Features, ImageInfo } from "@/lib/api";
 import { num } from "@/lib/format";
 import { DEFAULT_PREP, drawPrepared, pan, PREP_LIMITS, type Prep } from "@/lib/prep";
 import { NailRing } from "./NailRing";
+import { Slider, Switch } from "./ui/Controls";
+import { Icon } from "./ui/Icon";
 
 // --- Окно кадра ---------------------------------------------------------------
 interface ViewportProps {
@@ -124,14 +126,67 @@ interface ControlsProps {
 
 const percent = (v: number) => `${v > 0 ? "+" : ""}${num(Math.round(v * 100))} %`;
 
-export function PhotoControls({ info, features, prep, onChange, maskStatus, maskError, maskNote }: ControlsProps) {
+export interface AutoProps {
+  run: () => void;
+  busy: boolean;
+  stage: AutoStage;
+  result: AutoTone | null;
+  error: string;
+}
+
+const AUTO_STAGE_TEXT: Partial<Record<AutoStage, string>> = {
+  frame: "Ищем лицо и выбираем кадр…",
+  background: "Убираем фон…",
+  tone: "Подбираем яркость и контраст: пробуем 6 вариантов и сравниваем результат нитями с фото…",
+};
+
+function AutoPanel({ auto }: { auto: AutoProps }) {
+  const r = auto.result;
+  return (
+    <div className="auto-panel" data-testid="auto-panel">
+      <button type="button" className="btn tonal wide" onClick={auto.run} disabled={auto.busy}>
+        <Icon name="wand" />
+        {auto.busy ? "Настраиваем…" : "Автонастройка"}
+      </button>
+      <p className="auto-note" aria-live="polite">
+        {auto.busy ? (
+          AUTO_STAGE_TEXT[auto.stage]
+        ) : auto.stage === "done" && r ? (
+          <span data-testid="auto-result">
+            Сходство с фото {pct(r.score_before)} → <strong>{pct(r.score_after)}</strong>. Яркость {percent(r.brightness)},
+            контраст {percent(r.contrast)}.
+          </span>
+        ) : auto.stage === "error" ? (
+          <span role="alert" className="text-danger">
+            {auto.error}
+          </span>
+        ) : (
+          "Сама выберет кадр по лицу, уберёт фон и подберёт яркость и контраст так, чтобы картина из нитей была максимально похожа на фото."
+        )}
+      </p>
+    </div>
+  );
+}
+
+const pct = (v: number) => `${num(v * 100, 1)} %`;
+
+export function PhotoControls({
+  info,
+  features,
+  prep,
+  onChange,
+  maskStatus,
+  maskError,
+  maskNote,
+  auto,
+}: ControlsProps & { auto?: AutoProps }) {
   const hasFace = info.faces.length > 0 && info.face_prep !== null;
   const faceDisabled = !features?.face_detection || !hasFace;
   const bgDisabled = !features?.background_removal || maskStatus === "loading";
 
   return (
     <div className="photo-controls" data-testid="photo-controls">
-      <p className="hint">Перетащите фото в круге, чтобы выбрать кадр. Колесо мыши или два пальца — масштаб.</p>
+      {auto && <AutoPanel auto={auto} />}
 
       <Slider
         id="prep-zoom"
@@ -164,62 +219,55 @@ export function PhotoControls({ info, features, prep, onChange, maskStatus, mask
         onChange={(v) => onChange({ ...prep, contrast: v })}
       />
 
-      <fieldset className="options">
-        <legend>Дополнительно</legend>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={prep.face_focus}
-            disabled={faceDisabled}
-            onChange={(e) =>
-              onChange(
-                e.target.checked && info.face_prep
-                  ? { ...prep, ...pickFrame(info.face_prep), face_focus: true }
-                  : { ...prep, face_focus: false },
-              )
-            }
-          />
-          <span>Выделить лицо</span>
-        </label>
-        <small className="option-note">
-          {!features?.face_detection
-            ? "Поиск лица не установлен на сервере (нужен пакет opencv-python-headless)."
-            : hasFace
-              ? "Кадр встанет на лицо, а алгоритм проработает его детальнее."
-              : "Лицо анфас на фото не найдено — выберите кадр вручную."}
-        </small>
-
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={prep.remove_background}
-            disabled={bgDisabled}
-            onChange={(e) => onChange({ ...prep, remove_background: e.target.checked })}
-          />
-          <span>Убрать фон</span>
-        </label>
-        <small className="option-note" role={maskStatus === "error" ? "alert" : undefined}>
-          {features === null
-            ? "Нет связи с бэкендом — проверьте, что он запущен, и обновите страницу."
-            : !features.background_removal
-            ? "Не установлено на сервере. В папке backend выполните pip install -r requirements-bg.txt и перезапустите бэкенд."
-            : maskStatus === "loading"
-              ? maskNote || "Убираем фон…"
-              : maskStatus === "error"
-                ? maskError
-                : "Фон станет белым — все линии уйдут на человека."}
-        </small>
-      </fieldset>
+      <div className="switch-list">
+        <Switch
+          label="Выделить лицо"
+          checked={prep.face_focus}
+          disabled={faceDisabled}
+          onChange={(on) =>
+            onChange(
+              on && info.face_prep
+                ? { ...prep, ...pickFrame(info.face_prep), face_focus: true }
+                : { ...prep, face_focus: false },
+            )
+          }
+          hint={
+            !features?.face_detection
+              ? "Поиск лица не установлен на сервере (нужен пакет opencv-python-headless)."
+              : hasFace
+                ? "Кадр встанет на лицо, а алгоритм проработает его детальнее."
+                : "Лицо анфас на фото не найдено — выберите кадр вручную."
+          }
+        />
+        <Switch
+          label="Убрать фон"
+          checked={prep.remove_background}
+          disabled={bgDisabled}
+          onChange={(on) => onChange({ ...prep, remove_background: on })}
+          hintRole={maskStatus === "error" ? "alert" : undefined}
+          hint={
+            features === null
+              ? "Нет связи с бэкендом — проверьте, что он запущен, и обновите страницу."
+              : !features.background_removal
+                ? "Не установлено на сервере. В папке backend выполните pip install -r requirements-bg.txt и перезапустите бэкенд."
+                : maskStatus === "loading"
+                  ? maskNote || "Убираем фон…"
+                  : maskStatus === "error"
+                    ? maskError
+                    : "Фон станет белым — все линии уйдут на человека."
+          }
+        />
+      </div>
 
       <div className="photo-actions">
         <button
           type="button"
-          className="btn small"
+          className="btn ghost small"
           onClick={() => onChange({ ...prep, center_x: 0.5, center_y: 0.5, zoom: 1 })}
         >
           Кадр по центру
         </button>
-        <button type="button" className="btn small" onClick={() => onChange({ ...DEFAULT_PREP })}>
+        <button type="button" className="btn ghost small" onClick={() => onChange({ ...DEFAULT_PREP })}>
           Сбросить всё
         </button>
       </div>
@@ -229,33 +277,4 @@ export function PhotoControls({ info, features, prep, onChange, maskStatus, mask
 
 function pickFrame(p: Prep): Pick<Prep, "center_x" | "center_y" | "zoom"> {
   return { center_x: p.center_x, center_y: p.center_y, zoom: p.zoom };
-}
-
-function Slider(props: {
-  id: string;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  display: string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="field slider-field">
-      <div className="lines-head">
-        <label htmlFor={props.id}>{props.label}</label>
-        <output htmlFor={props.id}>{props.display}</output>
-      </div>
-      <input
-        id={props.id}
-        type="range"
-        min={props.min}
-        max={props.max}
-        step={props.step}
-        value={props.value}
-        onChange={(e) => props.onChange(Number(e.target.value))}
-      />
-    </div>
-  );
 }

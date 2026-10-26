@@ -31,7 +31,9 @@ public class ProjectLifecycleTest extends BaseApiTest {
         assertThat(p.getString("id")).matches("[0-9a-f]{12}");
         assertThat(p.getString("name")).isEqualTo("Тестовый портрет");
         assertThat(p.getDouble("diameter_cm")).isEqualTo(50.0);
-        assertThat(p.getInt("line_count")).isEqualTo(2000);
+        assertThat(p.getInt("line_count")).isBetween(1000, 5000);
+        int best = api().get("/api/projects/" + p.getString("id") + "/similarity").jsonPath().getInt("best_lines");
+        assertThat(p.getInt("line_count")).as("рекомендация — максимум сходства с фото").isEqualTo(best);
         assertThat(p.getInt("current_step")).isEqualTo(1);
         assertThat(p.getDouble("speed_sec")).isEqualTo(2.0);
 
@@ -52,7 +54,7 @@ public class ProjectLifecycleTest extends BaseApiTest {
         JsonPath p = upload(PORTRAIT_PNG, "image/png", null, "70").then().statusCode(201).extract().jsonPath();
         try {
             assertThat(p.getString("name")).isEqualTo("portrait");
-            assertThat(p.getInt("line_count")).isEqualTo(2800);
+            assertThat(p.getInt("line_count")).isBetween(1000, 5000);
         } finally {
             api().delete("/api/projects/" + p.getString("id"));
         }
@@ -105,6 +107,7 @@ public class ProjectLifecycleTest extends BaseApiTest {
     @Story("TC-API-12")
     public void reducingLinesClampsProgress() {
         String id = createProject("Линии", "50").getString("id");
+        patch(id, "{\"line_count\": 2000}").then().statusCode(200);
         patch(id, "{\"current_step\": 1900}").then().statusCode(200);
         JsonPath body = patch(id, "{\"line_count\": 1500}").then().statusCode(200).extract().jsonPath();
         assertThat(body.getInt("current_step")).isEqualTo(1500);
@@ -126,6 +129,7 @@ public class ProjectLifecycleTest extends BaseApiTest {
     @Story("TC-API-14")
     public void stepsAreContinuous() {
         String id = createProject("Шаги", "50").getString("id");
+        patch(id, "{\"line_count\": 2000}").then().statusCode(200);
         JsonPath page = api().queryParam("offset", 0).queryParam("limit", 50)
                 .get("/api/projects/" + id + "/steps").then().statusCode(200).extract().jsonPath();
         assertThat(page.getInt("total")).isEqualTo(2000);
@@ -161,5 +165,20 @@ public class ProjectLifecycleTest extends BaseApiTest {
         api().delete("/api/projects/" + id).then().statusCode(204);
         api().get("/api/projects/" + id).then().statusCode(404);
         api().delete("/api/projects/" + id).then().statusCode(404);
+    }
+
+    @Test(description = "TC-API-26 кривая сходства и рекомендация по максимуму")
+    @Story("TC-API-26")
+    public void similarityCurve() {
+        JsonPath p = createProject("Сходство", "50");
+        String id = p.getString("id");
+        JsonPath sim = api().get("/api/projects/" + id + "/similarity").then().statusCode(200).extract().jsonPath();
+        List<Float> scores = sim.getList("curve.score", Float.class);
+        assertThat(scores).hasSize(41);
+        assertThat(sim.getInt("best_lines")).isEqualTo(p.getInt("line_count"));
+        assertThat((double) sim.getFloat("best_score")).isEqualTo((double) java.util.Collections.max(scores), within(1e-6));
+        int small = api().queryParam("diameter_cm", 30).get("/api/projects/" + id + "/similarity")
+                .jsonPath().getInt("best_lines");
+        assertThat(small).isLessThanOrEqualTo(sim.getInt("best_lines"));
     }
 }

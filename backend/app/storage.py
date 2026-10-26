@@ -149,13 +149,15 @@ def update_project(project_id: str, fields: dict[str, Any]) -> dict[str, Any] | 
     return get_project(project_id)
 
 
-def replace_photo(project_id: str, *, sequence: list[int], source_png: bytes, prep: dict) -> dict[str, Any] | None:
+def replace_photo(
+    project_id: str, *, sequence: list[int], source_png: bytes, prep: dict, line_count: int
+) -> dict[str, Any] | None:
     """Новый расчёт после правки фото: схема другая, поэтому прогресс начинается заново."""
     with _connect() as conn:
         cur = conn.execute(
-            "UPDATE projects SET sequence = ?, source_png = ?, prep = ?, current_step = 1, updated_at = ?"
-            " WHERE id = ?",
-            (bytes(sequence), source_png, json.dumps(prep), _now(), project_id),
+            "UPDATE projects SET sequence = ?, source_png = ?, prep = ?, line_count = ?, current_step = 1,"
+            " updated_at = ? WHERE id = ?",
+            (bytes(sequence), source_png, json.dumps(prep), line_count, _now(), project_id),
         )
         if cur.rowcount == 0:
             return None

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PhotoControls, PhotoViewport } from "@/components/PhotoEditor";
-import { usePhotoEditor } from "@/hooks/usePhotoEditor";
+import { useAutoPrep, usePhotoEditor } from "@/hooks/usePhotoEditor";
 import { api, ApiError, type Features, type ImageInfo, type Project } from "@/lib/api";
 import { num } from "@/lib/format";
 import type { Prep } from "@/lib/prep";
@@ -36,11 +36,11 @@ export default function PhotoPage() {
 
   if (error) {
     return (
-      <div className="studio-missing">
+      <div className="page-empty">
         <p className="form-error" role="alert">
           {error}
         </p>
-        <Link href={project ? `/projects/${project.id}` : "/"} className="btn ghost">
+        <Link href={project ? `/projects/${project.id}` : "/"} className="btn secondary">
           Назад
         </Link>
       </div>
@@ -53,6 +53,7 @@ export default function PhotoPage() {
 function Editor({ project, info, features }: { project: Project; info: ImageInfo; features: Features | null }) {
   const router = useRouter();
   const editor = usePhotoEditor(info, project.prep as Partial<Prep>);
+  const auto = useAutoPrep(info, features, editor, project.diameter_cm);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -75,7 +76,7 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
       </nav>
       <section className="new-project" aria-labelledby="photo-title">
         <PhotoViewport info={info} image={editor.image} mask={editor.mask} prep={editor.prep} onChange={editor.setPrep} />
-        <div className="new-form">
+        <div className="inspector new-form">
           <h1 id="photo-title">Фото для портрета</h1>
           <PhotoControls
             info={info}
@@ -85,6 +86,7 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
             maskStatus={editor.maskStatus}
             maskError={editor.maskError}
             maskNote={editor.maskNote}
+            auto={auto}
           />
           {project.current_step > 1 && (
             <p className="warning" data-testid="progress-warning">
@@ -102,11 +104,11 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
               type="button"
               className="btn primary"
               onClick={save}
-              disabled={busy || editor.maskStatus === "loading"}
+              disabled={busy || editor.maskStatus === "loading" || auto.busy}
             >
               {busy ? "Считаем линии…" : "Пересчитать портрет"}
             </button>
-            <Link href={`/projects/${project.id}`} className="btn ghost">
+            <Link href={`/projects/${project.id}`} className="btn secondary">
               Отмена
             </Link>
           </div>

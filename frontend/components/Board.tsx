@@ -26,16 +26,26 @@ export function Board({ label, maxPixels = 1600, ...draw }: Props) {
   }, [maxPixels]);
 
   const { sequence, lines, diameterCm, activeStep, doneOpacity } = draw;
+  // Перерисовать при смене темы (подписи гвоздей берут цвет из темы)
+  const [themeTick, setThemeTick] = useState(0);
+  useEffect(() => {
+    const mo = new MutationObserver(() => setThemeTick((t) => t + 1));
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => mo.disconnect();
+  }, []);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || size === 0) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const raf = requestAnimationFrame(() =>
-      drawBoard(ctx, { sequence, lines, diameterCm, activeStep, doneOpacity, size }),
-    );
+    const raf = requestAnimationFrame(() => {
+      const css = getComputedStyle(document.documentElement);
+      const v = (name: string) => css.getPropertyValue(name).trim() || undefined;
+      const colors = { graphite: v("--text"), steel: v("--text-2"), chalk: v("--accent") };
+      drawBoard(ctx, { sequence, lines, diameterCm, activeStep, doneOpacity, size, colors: colors as never });
+    });
     return () => cancelAnimationFrame(raf);
-  }, [sequence, lines, diameterCm, activeStep, doneOpacity, size]);
+  }, [sequence, lines, diameterCm, activeStep, doneOpacity, size, themeTick]);
 
   return (
     <div className="board" ref={wrapRef}>

@@ -5,10 +5,14 @@ import { useAutoAdvance } from "@/hooks/useAutoAdvance";
 import { MAX_SPEED_SEC, MIN_SPEED_SEC } from "@/lib/constants";
 import { num, seconds } from "@/lib/format";
 import { nailLabel } from "@/lib/nails";
+import { chime, DEFAULT_SOUND, readSoundPrefs, saveSoundPrefs, type SoundPrefs, type StepSound } from "@/lib/sound";
 import { speak, speechSupported, spokenStep, stopSpeaking, type VoiceMode } from "@/lib/speech";
 import { canGoFaster, canGoSlower, clampSpeed, faster, slower } from "@/lib/speed";
 import { cumulativeLengthsM } from "@/lib/thread";
 import { Board } from "./Board";
+import { MediaPanel } from "./MediaPanel";
+import { Section, Slider } from "./ui/Controls";
+import { Icon, type IconName } from "./ui/Icon";
 
 export interface WeavePlayerProps {
   sequence: readonly number[];
@@ -20,20 +24,11 @@ export interface WeavePlayerProps {
   onSpeedChange?: (sec: number) => void;
 }
 
-const VOICE_KEY = "stringart.voice";
-
-function readVoicePrefs(): { enabled: boolean; mode: VoiceMode } {
-  try {
-    const raw = window.localStorage.getItem(VOICE_KEY);
-    if (raw) {
-      const v = JSON.parse(raw);
-      return { enabled: Boolean(v.enabled), mode: v.mode === "full" ? "full" : "target" };
-    }
-  } catch {
-    /* приватный режим или битые данные — берём значения по умолчанию */
-  }
-  return { enabled: false, mode: "target" };
-}
+const SOUND_OPTIONS: { value: StepSound; label: string; icon: IconName }[] = [
+  { value: "none", label: "Без звука", icon: "mute" },
+  { value: "chime", label: "Сигнал", icon: "bell" },
+  { value: "voice", label: "Голос", icon: "voice" },
+];
 
 export function WeavePlayer({
   sequence,
@@ -49,12 +44,12 @@ export function WeavePlayer({
   const [speed, setSpeed] = useState(() => clampSpeed(initialSpeedSec));
   const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
-  const [voice, setVoice] = useState<{ enabled: boolean; mode: VoiceMode }>({ enabled: false, mode: "target" });
+  const [sound, setSound] = useState<SoundPrefs>(DEFAULT_SOUND);
   const [voiceAvailable, setVoiceAvailable] = useState(false);
   const [jump, setJump] = useState("");
 
   useEffect(() => {
-    setVoice(readVoicePrefs());
+    setSound(readSoundPrefs());
     setVoiceAvailable(speechSupported());
   }, []);
 
@@ -85,28 +80,25 @@ export function WeavePlayer({
     }
   });
 
-  // Озвучка: при каждой смене шага и при включении голоса
+  // Звук шага: при смене шага (и при включении голоса — сразу текущий шаг)
   const from = sequence[step - 1];
   const to = sequence[step];
-  const lastSpoken = useRef<string>("");
+  const lastSounded = useRef<string>(`${step}:init`);
   useEffect(() => {
-    if (!voice.enabled || from === undefined || to === undefined) return;
-    const key = `${step}:${voice.mode}`;
-    if (lastSpoken.current === key) return;
-    lastSpoken.current = key;
-    speak(spokenStep(from, to, voice.mode));
-  }, [voice, step, from, to]);
+    if (from === undefined || to === undefined) return;
+    const key = `${step}:${sound.kind}:${sound.voiceMode}`;
+    if (lastSounded.current === key) return;
+    const firstRender = lastSounded.current.endsWith(":init");
+    lastSounded.current = key;
+    if (sound.kind === "voice") speak(spokenStep(from, to, sound.voiceMode));
+    else if (sound.kind === "chime" && !firstRender) chime(sound.volume);
+  }, [sound, step, from, to]);
   useEffect(() => () => stopSpeaking(), []);
 
-  const saveVoice = (v: { enabled: boolean; mode: VoiceMode }) => {
-    setVoice(v);
-    lastSpoken.current = "";
-    if (!v.enabled) stopSpeaking();
-    try {
-      window.localStorage.setItem(VOICE_KEY, JSON.stringify(v));
-    } catch {
-      /* не критично */
-    }
+  const updateSound = (p: SoundPrefs) => {
+    setSound(p);
+    if (p.kind !== "voice") stopSpeaking();
+    saveSoundPrefs(p);
   };
 
   const togglePlay = useCallback(() => {
@@ -118,7 +110,7 @@ export function WeavePlayer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA")) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.tagName === "VIDEO" || t.tagName === "AUDIO")) return;
       if (e.code === "Space") {
         e.preventDefault();
         togglePlay();
@@ -142,6 +134,7 @@ export function WeavePlayer({
   );
   const percent = (step / totalSteps) * 100;
   const next = step < totalSteps ? sequence[step + 1] : undefined;
+  const playLabel = playing ? "Пауза" : step > 1 ? "Продолжить" : "Старт";
 
   return (
     <div className="weave">
@@ -150,19 +143,20 @@ export function WeavePlayer({
           <div className="weave-count" data-testid="step-counter">
             Шаг <strong>{num(step)}</strong> из {num(totalSteps)}
           </div>
-          <div
-            className="bar"
-            role="progressbar"
-            aria-label="Прогресс плетения"
-            aria-valuemin={1}
-            aria-valuemax={totalSteps}
-            aria-valuenow={step}
-          >
-            <span style={{ width: `${percent}%` }} />
-          </div>
+          <span className="weave-percent">{num(percent, 1)} %</span>
+        </div>
+        <div
+          className="bar"
+          role="progressbar"
+          aria-label="Прогресс плетения"
+          aria-valuemin={1}
+          aria-valuemax={totalSteps}
+          aria-valuenow={step}
+        >
+          <span style={{ width: `${percent}%` }} />
         </div>
 
-        <p className="weave-step" data-testid="current-step" aria-live="polite">
+        <p className="weave-step" data-testid="current-step" aria-live="polite" key={step}>
           <span className="nail from">{nailLabel(from)}</span>{" "}
           <span className="arrow">→</span>{" "}
           <span className="nail to">{nailLabel(to)}</span>
@@ -183,70 +177,125 @@ export function WeavePlayer({
         </p>
 
         <div className="transport">
-          <button type="button" className="btn ghost" onClick={() => goTo(step - 1)} disabled={step <= 1}>
-            Назад
+          <button type="button" className="round-btn" onClick={() => goTo(step - 1)} disabled={step <= 1} aria-label="Назад" title="Назад (←)">
+            <Icon name="prev" size={22} />
           </button>
           <button
             type="button"
-            className="btn primary play"
+            className="round-btn play"
             onClick={togglePlay}
             aria-pressed={playing}
+            aria-label={playLabel}
             disabled={finished}
           >
-            {playing ? "Пауза" : step > 1 ? "Продолжить" : "Старт"}
+            <Icon name={playing ? "pause" : "play"} size={30} />
+            <span className="play-text" aria-hidden="true">
+              {playLabel}
+            </span>
           </button>
-          <button type="button" className="btn ghost" onClick={() => goTo(step + 1)} disabled={step >= totalSteps}>
-            Вперёд
+          <button
+            type="button"
+            className="round-btn"
+            onClick={() => goTo(step + 1)}
+            disabled={step >= totalSteps}
+            aria-label="Вперёд"
+            title="Вперёд (→)"
+          >
+            <Icon name="next" size={22} />
           </button>
         </div>
 
         <div className="speed" role="group" aria-label="Скорость автоперелистывания">
           <button
             type="button"
-            className="btn small"
+            className="icon-btn"
             onClick={() => changeSpeed(faster(speed))}
             disabled={!canGoFaster(speed)}
-            title={`Минимум ${seconds(MIN_SPEED_SEC)}`}
+            aria-label="Быстрее на 0,1 с"
+            title={`Быстрее (↑), минимум ${seconds(MIN_SPEED_SEC)}`}
           >
-            Быстрее <small>−0,1 с</small>
+            <Icon name="minus" />
           </button>
           <output className="speed-value" data-testid="speed">
             {seconds(speed)} на шаг
           </output>
           <button
             type="button"
-            className="btn small"
+            className="icon-btn"
             onClick={() => changeSpeed(slower(speed))}
             disabled={!canGoSlower(speed)}
-            title={`Максимум ${seconds(MAX_SPEED_SEC)}`}
+            aria-label="Медленнее на 0,1 с"
+            title={`Медленнее (↓), максимум ${seconds(MAX_SPEED_SEC)}`}
           >
-            Медленнее <small>+0,1 с</small>
+            <Icon name="plus" />
           </button>
         </div>
 
-        <div className="weave-extra">
-          <div className="voice">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={voice.enabled}
-                disabled={!voiceAvailable}
-                onChange={(e) => saveVoice({ ...voice, enabled: e.target.checked })}
-              />
-              <span>Озвучивать шаги</span>
-            </label>
-            <select
-              aria-label="Что озвучивать"
-              value={voice.mode}
-              disabled={!voiceAvailable || !voice.enabled}
-              onChange={(e) => saveVoice({ ...voice, mode: e.target.value as VoiceMode })}
-            >
-              <option value="target">только куда тянуть</option>
-              <option value="full">откуда и куда</option>
-            </select>
-            {!voiceAvailable && <small>Браузер не умеет синтезировать речь.</small>}
-          </div>
+        <p className="thread-used" data-testid="thread-used">
+          Уже натянуто {num(cumulative[step - 1] ?? 0, 1)} м из {num(cumulative[totalSteps] ?? 0, 1)} м лески
+        </p>
+      </section>
 
+      <aside className="weave-board">
+        <Board
+          label={`Схема: линия от ${nailLabel(from)} к ${nailLabel(to)}`}
+          sequence={sequence}
+          lines={step - 1}
+          diameterCm={diameterCm}
+          activeStep={step}
+        />
+      </aside>
+
+      <div className="weave-extras">
+        <Section title="Сигнал шага">
+          <div className="segmented-wide" role="radiogroup" aria-label="Сигнал шага">
+            {SOUND_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={sound.kind === o.value}
+                disabled={o.value === "voice" && !voiceAvailable}
+                onClick={() => updateSound({ ...sound, kind: o.value })}
+              >
+                <Icon name={o.icon} size={18} />
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {sound.kind === "voice" && (
+            <label className="inline-field">
+              <span>Произносить</span>
+              <select
+                aria-label="Что озвучивать"
+                value={sound.voiceMode}
+                onChange={(e) => updateSound({ ...sound, voiceMode: e.target.value as VoiceMode })}
+              >
+                <option value="target">только куда тянуть</option>
+                <option value="full">откуда и куда</option>
+              </select>
+            </label>
+          )}
+          {sound.kind === "chime" && (
+            <Slider
+              id="chime-volume"
+              label="Громкость сигнала"
+              min={0.1}
+              max={1}
+              step={0.05}
+              value={sound.volume}
+              display={`${num(Math.round(sound.volume * 100))} %`}
+              onChange={(v) => updateSound({ ...sound, volume: v })}
+            />
+          )}
+          {!voiceAvailable && <small className="muted">Голос недоступен: браузер не умеет синтезировать речь.</small>}
+        </Section>
+
+        <Section title="Фильм или музыка">
+          <MediaPanel weavePlaying={playing} />
+        </Section>
+
+        <Section title="Навигация">
           <form
             className="jump"
             onSubmit={(e) => {
@@ -265,29 +314,16 @@ export function WeavePlayer({
               value={jump}
               onChange={(e) => setJump(e.target.value)}
             />
-            <button type="submit" className="btn small">
+            <button type="submit" className="btn secondary small">
               Перейти
             </button>
           </form>
-
-          <p className="thread-used" data-testid="thread-used">
-            Уже натянуто {num(cumulative[step - 1] ?? 0, 1)} м из {num(cumulative[totalSteps] ?? 0, 1)} м лески
-          </p>
           <p className="keys">
-            <kbd>Пробел</kbd> старт и пауза, <kbd>←</kbd> <kbd>→</kbd> шаг, <kbd>↑</kbd> <kbd>↓</kbd> быстрее и медленнее
+            <kbd>Пробел</kbd> старт и пауза, <kbd>←</kbd> <kbd>→</kbd> шаг, <kbd>↑</kbd> <kbd>↓</kbd> быстрее и
+            медленнее
           </p>
-        </div>
-      </section>
-
-      <aside className="weave-board">
-        <Board
-          label={`Схема: линия от ${nailLabel(from)} к ${nailLabel(to)}`}
-          sequence={sequence}
-          lines={step - 1}
-          diameterCm={diameterCm}
-          activeStep={step}
-        />
-      </aside>
+        </Section>
+      </div>
     </div>
   );
 }
