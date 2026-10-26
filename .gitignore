@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+backend/data/
+# Node / Next
+frontend/node_modules/
+frontend/.next/
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/
+# Автотесты
+autotests/java/target/
+autotests/csharp/bin/
+autotests/csharp/obj/
+frontend/AGENTS.md
+frontend/CLAUDE.md

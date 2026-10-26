@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Запуск «Нитеграфа» на macOS/Linux одной командой: ./scripts/start.sh
+# Сам ставит зависимости при первом запуске и после обновлений, поднимает бэкенд (8000) и фронтенд (3000).
+# Остановка — Ctrl+C.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PY="${PYTHON:-python3}"
+
+echo "▶ Бэкенд: зависимости"
+cd "$ROOT/backend"
+[ -d .venv ] || "$PY" -m venv .venv
+# shellcheck disable=SC1091
+source .venv/bin/activate
+REQ="requirements.txt"
+[ "${WITH_BG:-0}" = "1" ] && REQ="requirements-bg.txt"
+pip install -q -r "$REQ"
+
+echo "▶ Фронтенд: зависимости"
+cd "$ROOT/frontend"
+npm install --no-audit --no-fund --loglevel=error
+
+cd "$ROOT/backend"
+uvicorn app.main:app --port 8000 &
+BACK=$!
+cd "$ROOT/frontend"
+npx next dev -p 3000 &
+FRONT=$!
+trap 'kill $BACK $FRONT 2>/dev/null; exit 0' INT TERM
+
+echo
+echo "✔ Откройте http://localhost:3000   (остановить — Ctrl+C)"
+wait

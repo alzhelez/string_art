@@ -1,0 +1,109 @@
+# CI для GitLab: юнит-тесты, сборка, E2E и API-автотесты на всех языках.
+# Allure-результаты Java-тестов сохраняются артефактом — их можно загрузить в Allure TestOps (allurectl).
+
+stages: [unit, build, e2e, api]
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  npm_config_cache: "$CI_PROJECT_DIR/.cache/npm"
+
+.python: &python
+  image: python:3.12-slim
+  cache: { key: pip, paths: [.cache/pip] }
+
+.node: &node
+  image: node:22
+  cache: { key: npm, paths: [.cache/npm] }
+  before_script:
+    - cd frontend && npm ci
+
+# --- unit ---------------------------------------------------------------------
+backend:pytest:
+  <<: *python
+  stage: unit
+  script:
+    - cd backend
+    - pip install -r requirements-dev.txt
+    - python -m pytest --junitxml=report.xml
+  artifacts:
+    when: always
+    reports: { junit: backend/report.xml }
+
+frontend:vitest:
+  <<: *node
+  stage: unit
+  script:
+    - npm run typecheck
+    - npx vitest run --reporter=default --reporter=junit --outputFile=vitest.xml
+  artifacts:
+    when: always
+    reports: { junit: frontend/vitest.xml }
+
+# --- build --------------------------------------------------------------------
+frontend:build:
+  <<: *node
+  stage: build
+  script:
+    - npm run build
+
+# --- e2e (Playwright сам поднимает бэкенд и фронтенд) ------------------------
+e2e:playwright:
+  stage: e2e
+  image: mcr.microsoft.com/playwright:v1.63.0-noble
+  variables: { CI: "true", PYTHON: python3 }
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    - pip3 install --break-system-packages -q -r backend/requirements.txt
+    - cd frontend && npm ci
+  script:
+    - npx playwright test
+  artifacts:
+    when: always
+    paths: [frontend/playwright-report]
+    reports: { junit: frontend/test-results/junit.xml }
+
+# --- API-автотесты на разных языках ------------------------------------------
+.api: &api
+  stage: api
+  needs: [backend:pytest]
+  variables: { STRINGART_API: "http://127.0.0.1:8000" }
+
+api:java:
+  <<: *api
+  image: maven:3.9-eclipse-temurin-21
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    - sh autotests/ci/start-backend.sh
+  script:
+    - cd autotests/java && mvn -B test -Dapi.baseUrl=$STRINGART_API
+  artifacts:
+    when: always
+    paths: [autotests/java/target/allure-results]
+    reports: { junit: autotests/java/target/surefire-reports/TEST-*.xml }
+
+api:go:
+  <<: *api
+  image: golang:1.22
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    - sh autotests/ci/start-backend.sh
+  script:
+    - cd autotests/go && go test -v ./...
+
+api:ruby:
+  <<: *api
+  image: ruby:3.3
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    - sh autotests/ci/start-backend.sh
+  script:
+    - ruby autotests/ruby/api_test.rb
+
+api:csharp:
+  <<: *api
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    - sh autotests/ci/start-backend.sh
+  script:
+    - cd autotests/csharp && dotnet test --logger trx

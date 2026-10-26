@@ -1,0 +1,832 @@
+/* Нитеграф. Мотив: белый круг с гвоздями на светлом оцинкованном верстаке,
+   чёрная леска и синяя отбивочная нить для «текущей» линии. */
+:root {
+  --bench: #e6eaee;
+  --bench-deep: #d5dbe1;
+  --board: #ffffff;
+  --graphite: #23272e;
+  --steel: #7d8a97;
+  --steel-dark: #56616c;
+  --chalk: #2457d6;
+  --chalk-ink: #1b45b3;
+  --chalk-soft: #dce5fa;
+  --danger: #b3261e;
+
+  --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --text: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --step--1: 0.875rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.6rem;
+  --step-3: 2.2rem;
+
+  --radius-control: 10px;
+  --space: 1rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bench);
+  color: var(--graphite);
+  font-family: var(--text);
+  font-size: var(--step-0);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--chalk-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--chalk);
+  outline-offset: 2px;
+}
+
+h1,
+h2 {
+  font-family: var(--display);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.6em;
+}
+
+h1 {
+  font-size: var(--step-3);
+}
+
+h2 {
+  font-size: var(--step-2);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--steel-dark);
+}
+
+/* --- шапка --------------------------------------------------------------- */
+.site-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 0;
+}
+
+.brand {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: var(--step-1);
+  color: var(--graphite);
+  text-decoration: none;
+}
+
+.brand-note {
+  color: var(--steel-dark);
+  font-size: var(--step--1);
+}
+
+.site-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+/* --- кнопки и поля ------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  min-height: 44px;
+  padding: 0.55rem 1.1rem;
+  border: 1.5px solid var(--graphite);
+  border-radius: var(--radius-control);
+  background: var(--board);
+  color: var(--graphite);
+  font: 500 var(--step-0) / 1.2 var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--chalk-soft);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--chalk);
+  border-color: var(--chalk);
+  color: #fff;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--chalk-ink);
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.btn.small {
+  min-height: 36px;
+  padding: 0.35rem 0.75rem;
+  font-size: var(--step--1);
+}
+
+.btn small {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.btn.danger-link,
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  min-height: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn.danger-link {
+  color: var(--danger);
+  margin-top: 1.5rem;
+}
+
+.link-btn {
+  color: var(--chalk-ink);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+label,
+legend {
+  font-weight: 500;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  font: inherit;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid var(--steel);
+  border-radius: var(--radius-control);
+  background: var(--board);
+  color: var(--graphite);
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.field-error,
+.form-error {
+  color: var(--danger);
+  margin: 0.5rem 0;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  color: var(--steel-dark);
+  font-size: var(--step--1);
+}
+
+/* --- выбор диаметра ------------------------------------------------------ */
+.diameter {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.25rem;
+}
+
+.diameter legend {
+  margin-bottom: 0.35rem;
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.seg {
+  min-width: 52px;
+  min-height: 44px;
+  border: 1.5px solid var(--steel);
+  border-radius: 999px;
+  background: var(--board);
+  font: 500 var(--step-0) var(--text);
+  color: var(--graphite);
+  cursor: pointer;
+}
+
+.seg[aria-checked="true"] {
+  background: var(--graphite);
+  border-color: var(--graphite);
+  color: #fff;
+}
+
+.seg-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 400;
+}
+
+.seg-custom input {
+  width: 5.5rem;
+  border-radius: 999px;
+}
+
+/* --- новый портрет ------------------------------------------------------- */
+.new-project {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 3rem;
+  align-items: center;
+  margin-bottom: 4rem;
+}
+
+.drop {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 560px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.drop-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ring-nail {
+  fill: var(--steel);
+}
+
+.ring-axis {
+  stroke: var(--steel);
+  stroke-dasharray: 3 4;
+  opacity: 0.45;
+}
+
+.ring-sector {
+  font: 500 15px var(--display);
+  fill: var(--steel-dark);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.drop::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: var(--board);
+  transition: box-shadow 0.15s;
+}
+
+.drop.is-drag::before,
+.drop:focus-within::before {
+  box-shadow: 0 0 0 4px var(--chalk);
+}
+
+.drop-text {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  text-align: center;
+  font-family: var(--display);
+  font-size: var(--step-1);
+  margin: 0 14%;
+  padding: 0.75rem 1rem;
+  background: var(--board);
+}
+
+.drop-text small {
+  font-family: var(--text);
+  font-size: var(--step--1);
+  color: var(--steel-dark);
+}
+
+.drop-photo {
+  position: relative;
+  width: 84%;
+  height: 84%;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: grayscale(1);
+}
+
+.drop.is-busy .drop-ring {
+  animation: spin 6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lead {
+  max-width: 46ch;
+  color: var(--steel-dark);
+  margin: 0 0 1.5rem;
+}
+
+.new-form input[type="text"] {
+  max-width: 24rem;
+}
+
+.new-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* --- редактор фото ------------------------------------------------------ */
+.editor-view {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 560px;
+}
+
+.editor-canvas {
+  position: absolute;
+  inset: 9.5%;
+  width: 81%;
+  height: 81%;
+  border-radius: 50%;
+  background: var(--board);
+  cursor: grab;
+  touch-action: none; /* жесты пальцами — наши, а не прокрутка страницы */
+}
+
+.editor-canvas:active {
+  cursor: grabbing;
+}
+
+.editor-loading {
+  position: relative;
+  color: var(--steel-dark);
+}
+
+.photo-controls {
+  margin: 0.5rem 0 1.25rem;
+  padding-top: 1rem;
+  border-top: 1.5px solid var(--bench-deep);
+}
+
+.slider-field {
+  margin-bottom: 0.75rem;
+}
+
+.slider-field output {
+  font-variant-numeric: tabular-nums;
+  color: var(--steel-dark);
+}
+
+.options {
+  border: 0;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.options legend {
+  margin-bottom: 0.4rem;
+}
+
+.option-note {
+  display: block;
+  margin: 0 0 0.6rem 1.75rem;
+  color: var(--steel-dark);
+  max-width: 46ch;
+}
+
+.option-note[role="alert"] {
+  color: var(--danger);
+}
+
+.photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.warning {
+  border-left: 3px solid var(--chalk);
+  padding: 0.4rem 0 0.4rem 0.75rem;
+  max-width: 46ch;
+}
+
+.photo-edit-link {
+  margin: 1.5rem 0 0;
+}
+
+/* --- список проектов ----------------------------------------------------- */
+.cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 2rem 1.5rem;
+}
+
+.card {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  text-align: center;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+.card:hover .card-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.card-art {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.card-art img {
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  background: var(--board);
+}
+
+.card-ring {
+  position: absolute;
+  inset: 0;
+}
+
+.card-ring-track {
+  fill: none;
+  stroke: var(--bench-deep);
+  stroke-width: 3;
+}
+
+.card-ring-fill {
+  fill: none;
+  stroke: var(--chalk);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.card-name {
+  font-weight: 600;
+}
+
+.card-meta {
+  font-size: var(--step--1);
+  color: var(--steel-dark);
+}
+
+/* --- студия -------------------------------------------------------------- */
+.crumbs {
+  margin-bottom: 1rem;
+  font-size: var(--step--1);
+}
+
+.studio-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr);
+  gap: 3rem;
+  align-items: start;
+}
+
+.board canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.board-note {
+  font-size: var(--step--1);
+  max-width: 60ch;
+}
+
+.title-input {
+  width: 100%;
+  border: 0 !important;
+  border-bottom: 1.5px dashed var(--steel) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  font: 500 var(--step-2) / 1.2 var(--display) !important;
+  padding: 0.2rem 0 !important;
+  margin-bottom: 1.5rem;
+}
+
+.lines-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.lines-head output {
+  font: 500 var(--step-1) var(--display);
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--chalk);
+  min-height: 32px;
+}
+
+.stats {
+  margin: 0 0 1.5rem;
+  border-top: 1.5px solid var(--bench-deep);
+}
+
+.stats div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1.5px solid var(--bench-deep);
+}
+
+.stats dt {
+  color: var(--steel-dark);
+}
+
+.stats dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats .stat-key dd {
+  color: var(--chalk-ink);
+  font-family: var(--display);
+  font-weight: 500;
+}
+
+.studio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.source {
+  margin-top: 1.5rem;
+}
+
+.source summary {
+  cursor: pointer;
+  color: var(--steel-dark);
+}
+
+.source img {
+  margin-top: 0.75rem;
+  border-radius: 50%;
+}
+
+.studio-missing {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+}
+
+/* --- плетение ------------------------------------------------------------ */
+.weave {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 3rem;
+  align-items: start;
+}
+
+.weave-progress {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.weave-count {
+  color: var(--steel-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.weave-count strong {
+  color: var(--graphite);
+}
+
+.bar {
+  height: 6px;
+  background: var(--bench-deep);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--chalk);
+}
+
+/* Главный элемент: читается с расстояния вытянутой руки, пока руки заняты леской */
+.weave-step {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(3.2rem, 9vw, 6.5rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.weave-step .from {
+  color: var(--steel);
+  font-weight: 500;
+}
+
+.weave-step .arrow {
+  color: var(--steel);
+  font-weight: 500;
+}
+
+.weave-step .to {
+  color: var(--chalk);
+}
+
+.weave-hint {
+  min-height: 1.5em;
+  margin: 1rem 0 2rem;
+  font-size: var(--step-1);
+}
+
+.transport {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap: 0.75rem;
+  max-width: 34rem;
+}
+
+.transport .btn {
+  min-height: 60px;
+  font-size: var(--step-1);
+}
+
+.speed {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.speed .btn {
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.15;
+}
+
+.speed-value {
+  text-align: center;
+  font: 500 var(--step-1) var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.weave-extra {
+  display: grid;
+  gap: 1.25rem;
+  padding-top: 1.5rem;
+  border-top: 1.5px solid var(--bench-deep);
+}
+
+.voice,
+.jump {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.switch input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--chalk);
+}
+
+.jump input {
+  width: 7rem;
+}
+
+.thread-used {
+  margin: 0;
+}
+
+.keys {
+  margin: 0;
+  font-size: var(--step--1);
+  color: var(--steel-dark);
+}
+
+kbd {
+  font: inherit;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--steel);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--board);
+}
+
+.weave-board {
+  position: sticky;
+  top: 1rem;
+}
+
+/* --- адаптив ------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .new-project,
+  .studio-grid,
+  .weave {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .drop,
+  .editor-view {
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .weave-board {
+    position: static;
+    max-width: 480px;
+  }
+
+  .keys {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,12 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="String Art API" verbose="1">
+    <test name="API">
+        <classes>
+            <class name="ru.stringart.api.HealthAndConfigTest"/>
+            <class name="ru.stringart.api.ProjectLifecycleTest"/>
+            <class name="ru.stringart.api.ProjectValidationTest"/>
+            <class name="ru.stringart.api.InstructionsTest"/>
+            <class name="ru.stringart.api.PhotoEditorTest"/>
+        </classes>
+    </test>
+</suite>
