@@ -23,7 +23,7 @@ cd "$ROOT/backend"
 uvicorn app.main:app --port 8000 &
 BACK=$!
 cd "$ROOT/frontend"
-npx next dev -p 3000 &
+npm run dev &
 FRONT=$!
 trap 'kill $BACK $FRONT 2>/dev/null; exit 0' INT TERM
 

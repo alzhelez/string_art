@@ -40,7 +40,7 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: `npx next dev -p ${FRONT_PORT}`,
+      command: `npx next dev --webpack -p ${FRONT_PORT}`,
       env: { BACKEND_URL: `http://127.0.0.1:${BACKEND_PORT}`, NEXT_TELEMETRY_DISABLED: "1" },
       url: `http://127.0.0.1:${FRONT_PORT}`,
       reuseExistingServer: false,

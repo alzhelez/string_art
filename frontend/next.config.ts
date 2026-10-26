@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 // Все запросы /api/* фронтенд проксирует на Python-бэкенд — CORS не нужен.
+// Сборка идёт через webpack (флаг --webpack в package.json): Turbopack требует нативный
+// модуль SWC, который на части Windows-машин не загружается, а webpack работает и с WASM-версией.
 const backend = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {

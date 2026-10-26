@@ -60,6 +60,9 @@ npm install
 npm run dev
 ```
 
+Откройте **http://localhost:3000** — это приложение. Адрес http://localhost:8000, который пишет бэкенд, —
+служебный (API), в браузере он просто перекинет на 3000.
+
 ## 4. Удаление фона (необязательно)
 
 Галочка «Убрать фон» работает, если поставить дополнительный пакет:
@@ -79,16 +82,27 @@ pip install -r requirements-bg.txt
 
 ## 5. Получить обновления
 
-Когда в репозитории появились изменения:
+1. Остановите приложение: закройте окна бэкенда и фронтенда (Windows) или нажмите `Ctrl+C` (macOS/Linux).
+2. Перейдите в папку проекта и заберите изменения:
+
+   ```bash
+   cd C:\string_art        # macOS/Linux: cd ~/string_art (или где лежит проект)
+   git pull
+   ```
+
+3. Запустите как обычно: `scripts\start.bat` (Windows) или `./scripts/start.sh` (macOS/Linux).
+   Скрипт сам доустановит новые зависимости Python и Node.js.
+
+Если запускаете вручную, после `git pull` повторите установку зависимостей:
 
 ```bash
-cd string_art
-git pull
+cd backend
+.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+cd ..\frontend                   # macOS/Linux: cd ../frontend
+npm install
+npm run dev
 ```
-
-После этого просто запустите приложение как обычно (`./scripts/start.sh` или `scripts\start.bat`) —
-скрипт сам доустановит новые зависимости. Если запускаете вручную, повторите
-`pip install -r requirements.txt` в `backend` и `npm install` во `frontend`.
 
 Ваши портреты не пропадут: они хранятся в `backend/data/string_art.db`, а этот файл не входит в Git
 и при обновлении не трогается. Новые колонки в базе добавляются автоматически.
@@ -100,6 +114,9 @@ git stash        # убрать свои правки в сторону
 git pull
 git stash pop    # вернуть их (если они нужны)
 ```
+
+Если правки не нужны и хочется ровно то, что на GitHub: `git fetch` и `git reset --hard origin/main`
+(база с портретами при этом не пострадает).
 
 Посмотреть, что изменилось: `git log --oneline -10`.
 
@@ -130,4 +147,7 @@ git stash pop    # вернуть их (если они нужны)
 | На странице «Сервер не отвечает» | Не запущен бэкенд — проверьте окно/терминал с `uvicorn` |
 | Галочка «Убрать фон» неактивна | Не установлен `requirements-bg.txt` (см. раздел 4) |
 | «Лицо анфас на фото не найдено» | Поиск работает по лицам анфас; для профиля выберите кадр вручную |
-| Открываете с телефона по адресу компьютера | Запускайте фронтенд как `npx next dev -p 3000 -H 0.0.0.0` и откройте `http://<IP-компьютера>:3000` |
+| Открываете с телефона по адресу компьютера | Запускайте фронтенд как `npx next dev --webpack -p 3000 -H 0.0.0.0` и откройте `http://<IP-компьютера>:3000` |
+| На http://localhost:8000 пусто или `404 Not Found` | Это адрес API, а не приложения. Приложение — **http://localhost:3000** (в новой версии 8000 сам перекидывает туда) |
+| `Turbopack is not supported on this platform` или `next-swc… is not a valid Win32 application` | Обновитесь (`git pull`): фронтенд теперь запускается через `npm run dev`, где используется webpack — ему нативный модуль не нужен. Запускайте именно `npm run dev`, а не `npx next dev` |
+| Что-то странное после обновления фронтенда | Переустановите пакеты начисто: удалите папку `frontend\node_modules` (Windows: `rmdir /s /q node_modules`, macOS/Linux: `rm -rf node_modules`) и выполните `npm install` |

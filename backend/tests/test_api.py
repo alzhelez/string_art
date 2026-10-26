@@ -198,3 +198,12 @@ def test_geometry_endpoint(client, d, spacing, lines):
     body = client.get("/api/geometry", params={"diameter_cm": d}).json()
     assert body["nail_spacing_mm"] == spacing
     assert body["recommended_lines"] == lines
+
+
+# TC-API-25
+def test_root_redirects_to_app(client):
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 307
+    assert r.headers["location"] == "http://localhost:3000"
+    assert client.get("/favicon.ico").status_code == 204
+    assert "localhost:3000" in client.get("/api").text

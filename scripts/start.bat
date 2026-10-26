@@ -14,7 +14,7 @@ start "Nitegraf backend" cmd /k ".venv\Scripts\activate.bat && uvicorn app.main:
 
 cd /d "%~dp0..\frontend"
 call npm install --no-audit --no-fund --loglevel=error || (pause & exit /b 1)
-start "Nitegraf frontend" cmd /k "npx next dev -p 3000"
+start "Nitegraf frontend" cmd /k "npm run dev"
 
 timeout /t 8 >nul
 start http://localhost:3000

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import re
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -10,6 +11,7 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field
@@ -235,6 +237,28 @@ def _generate(image: dict[str, Any], prep: photo.Prep) -> tuple[list[int], Image
 
 
 # --- Маршруты ---------------------------------------------------------------
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+
+@app.get("/", include_in_schema=False)
+def root() -> Response:
+    """Это API, а не сайт: открывший http://localhost:8000 в браузере попадёт на приложение."""
+    return RedirectResponse(FRONTEND_URL, status_code=307)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    return Response(status_code=204)
+
+
+@app.get("/api", include_in_schema=False)
+def api_index() -> HTMLResponse:
+    return HTMLResponse(
+        "<meta charset=utf-8><p>Это API «Нитеграфа». Приложение открывается по адресу "
+        f'<a href="{FRONTEND_URL}">{FRONTEND_URL}</a>, документация API — <a href="/docs">/docs</a>.</p>'
+    )
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
