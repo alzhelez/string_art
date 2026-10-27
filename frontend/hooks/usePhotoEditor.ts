@@ -55,6 +55,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Состояние редактора: само фото, маска фона и параметры кадра. */
 export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [imageError, setImageError] = useState(false);
   const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
   const [maskVersion, setMaskVersion] = useState(0);
   const [maskEdited, setMaskEdited] = useState(false);
@@ -93,9 +94,20 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
     maskJob.current = null;
     if (!info) return;
     let current = true;
-    loadImage(api.imageUrl(info.id))
-      .then((img) => current && setImage(img))
-      .catch(() => current && setImage(null));
+    setImageError(false);
+    // Сервер мог быть занят (первый запуск, скачивание модели) — пробуем ещё пару раз
+    (async () => {
+      for (let attempt = 0; attempt < 3 && current; attempt++) {
+        try {
+          const img = await loadImage(api.imageUrl(info.id));
+          if (current) setImage(img);
+          return;
+        } catch {
+          await sleep(1000 * (attempt + 1));
+        }
+      }
+      if (current) setImageError(true);
+    })();
     return () => {
       current = false;
     };
@@ -285,6 +297,7 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
 
   return {
     image,
+    imageError,
     mask,
     maskVersion,
     maskStatus,

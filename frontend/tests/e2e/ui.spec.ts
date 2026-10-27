@@ -168,6 +168,8 @@ test.describe("Редактор фото", () => {
     await page.goto("/");
     await page.getByTestId("file-input").setInputFiles(FACE_JPG);
     await expect(page.getByTestId("photo-controls")).toBeVisible();
+    // Кадр двигаем, когда фото уже на холсте (на медленном CI оно грузится не сразу)
+    await expect(page.getByText("Загружаем фото…")).toBeHidden({ timeout: 30_000 });
     const zoom = page.getByRole("slider", { name: "Масштаб" });
     await expect(zoom).toHaveValue("1");
 
@@ -230,6 +232,7 @@ test.describe("Редактор фото", () => {
     await panel.getByRole("radio", { name: "Стереть" }).click();
     await expect(page.getByTestId("photo-viewport")).toHaveAttribute("data-tool", "erase");
 
+    await expect(page.getByText("Загружаем фото…")).toBeHidden({ timeout: 30_000 });
     const viewport = page.getByTestId("photo-viewport");
     await viewport.scrollIntoViewIfNeeded();
     const box = (await viewport.boundingBox())!;

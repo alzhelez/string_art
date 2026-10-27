@@ -22,6 +22,8 @@ export interface BrushApi {
 interface ViewportProps {
   info: ImageInfo;
   image: HTMLImageElement | null;
+  /** Фото так и не загрузилось (сервер недоступен). */
+  imageError?: boolean;
   mask: HTMLCanvasElement | null;
   /** Меняется при каждой правке маски кистью — сигнал перерисовать. */
   maskVersion?: number;
@@ -35,7 +37,7 @@ interface ViewportProps {
  * В режиме кисти — стирать фон или возвращать части человека.
  * Показывает ровно то, что получит алгоритм (кадр в оттенках серого).
  */
-export function PhotoViewport({ info, image, mask, maskVersion = 0, prep, onChange, brush }: ViewportProps) {
+export function PhotoViewport({ info, image, imageError = false, mask, maskVersion = 0, prep, onChange, brush }: ViewportProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -176,7 +178,11 @@ export function PhotoViewport({ info, image, mask, maskVersion = 0, prep, onChan
         }}
       />
       {painting && <div ref={cursorRef} className="brush-cursor" aria-hidden="true" />}
-      {!image && <span className="editor-loading">Загружаем фото…</span>}
+      {!image && (
+        <span className={`editor-loading ${imageError ? "is-error" : ""}`} role={imageError ? "alert" : "status"}>
+          {imageError ? "Не удалось загрузить фото. Проверьте, что программа запущена, и обновите страницу." : "Загружаем фото…"}
+        </span>
+      )}
     </div>
   );
 }

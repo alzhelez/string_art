@@ -87,6 +87,7 @@ export function NewProject() {
         <PhotoViewport
           info={info}
           image={editor.image}
+          imageError={editor.imageError}
           mask={editor.mask}
           maskVersion={editor.maskVersion}
           brush={{ ...editor.brush, tool: editor.tool, size: editor.brushSize }}

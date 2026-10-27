@@ -807,6 +807,13 @@ input[aria-invalid="true"] {
 .editor-loading {
   position: relative;
   color: var(--text-2);
+  pointer-events: none; /* надпись не мешает сразу двигать кадр */
+  text-align: center;
+  max-width: 70%;
+}
+
+.editor-loading.is-error {
+  color: var(--danger);
 }
 
 .new-form h1 {

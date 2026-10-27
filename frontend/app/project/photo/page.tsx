@@ -85,7 +85,8 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
         <Link href={routes.project(project.id)}>{project.name}</Link>
       </nav>
       <section className="new-project" aria-labelledby="photo-title">
-        <PhotoViewport info={info} image={editor.image} mask={editor.mask}
+        <PhotoViewport info={info} image={editor.image}
+          imageError={editor.imageError} mask={editor.mask}
           maskVersion={editor.maskVersion}
           brush={{ ...editor.brush, tool: editor.tool, size: editor.brushSize }} prep={editor.prep} onChange={editor.setPrep} />
         <div className="inspector new-form">
