@@ -175,6 +175,7 @@ test.describe("Редактор фото", () => {
     expect(Number(await zoom.inputValue())).toBeGreaterThan(1.5);
 
     await page.getByRole("slider", { name: "Яркость" }).fill("0.1");
+    let diag = "";
     if (isMobile) {
       // Эмуляция тача в Playwright не умеет «тянуть» — проверяем сдвиг с клавиатуры (тоже часть доступности)
       await page.getByTestId("photo-viewport").focus();
@@ -183,11 +184,20 @@ test.describe("Редактор фото", () => {
     } else {
       // Сдвиг кадра мышью (после ползунков страница могла прокрутиться — возвращаем кадр в окно)
       await page.getByTestId("photo-viewport").scrollIntoViewIfNeeded();
+      await page.evaluate(() => {
+        const w = window as unknown as { __log: string[] };
+        w.__log = [];
+        for (const t of ["pointerdown", "pointermove", "pointerup", "lostpointercapture"])
+          document.addEventListener(t, (e) => w.__log.push(`${t}:${(e.target as Element).tagName}:${Math.round((e as PointerEvent).clientX)}`), true);
+      });
       const box = (await page.getByTestId("photo-viewport").boundingBox())!;
+      diag = `box=${JSON.stringify(box)} vp=${JSON.stringify(page.viewportSize())}`;
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.down();
       await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2, { steps: 4 });
       await page.mouse.up();
+      diag += ` log=${await page.evaluate(() => (window as unknown as { __log: string[] }).__log.join(","))}`;
+      diag += ` zoom=${await zoom.inputValue()}`;
     }
 
     await page.getByLabel("Название").fill(uniqueName("Лицо"));
@@ -199,7 +209,7 @@ test.describe("Редактор фото", () => {
     expect(p.prep.brightness).toBeCloseTo(0.1, 5);
     expect(p.prep.zoom).toBeGreaterThan(1.5);
     const img = await (await request.get(`/api/images/${p.image_id}`)).json();
-    expect(p.prep.center_x).toBeLessThan(img.face_prep.center_x); // сдвинули фото вправо → центр кадра левее лица
+    expect(p.prep.center_x, diag).toBeLessThan(img.face_prep.center_x); // сдвинули фото вправо → центр кадра левее лица
   });
 
   test("UI-11 «Убрать фон»", async ({ page, request }) => {
