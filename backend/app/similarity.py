@@ -1,12 +1,20 @@
-"""Насколько картина из нитей похожа на фото.
+"""Насколько картина из нитей похожа на фото — по ней выбирается рекомендуемое число линий.
 
-Метрика: корреляция яркости «как видит глаз» — и результат, и фото размываются на
-3 мм (так картину видно с пары метров), затем считается коэффициент корреляции
-внутри круга. 1,0 — тона совпадают идеально, 0 — ничего общего.
+Картина «рендерится» так, как её видно вживую: каждая леска 0,2 мм закрывает долю
+пикселя (на маленьком круге — большую), перекрытия складываются как полупрозрачные слои.
 
-Почему есть максимум: при малом числе линий не хватает тёмных мест, при большом —
-вся картина уходит в серое. Где именно максимум, зависит и от фото, и от диаметра:
-та же леска на маленьком круге закрывает больше площади.
+Сходство состоит из двух частей:
+
+* **Детали (основной вес).** Рисунок и фото слегка размываются (1,5 и 3 мм — с какого
+  расстояния картину рассматривают), затем в каждой точке вычитается местная средняя
+  яркость и делится на местный контраст (окно ~8 мм). Остаются черты лица, контуры,
+  складки — то, по чему узнают человека. Корреляция этих «карт деталей» и есть оценка.
+  От общей яркости она не зависит: тёмная картина с чёткими глазами считается похожей.
+* **Тон (малый вес 0,1).** Обычная корреляция яркостей при размытии 3 мм — чтобы
+  не советовать столько линий, что картина уходит в сплошную черноту.
+
+Первая версия смотрела только на тон и недооценивала детали: на большом круге
+рекомендация была ~1800–2200 линий, хотя при 3000–4000 лицо заметно чётче.
 """
 
 from __future__ import annotations
@@ -23,7 +31,10 @@ from .config import MAX_LINES, MIN_LINES, PROCESSING_SIZE
 from .image_prep import circle_mask, target_map
 from .render import line_alpha
 
-VIEW_BLUR_MM = 3.0
+DETAIL_SCALES_MM = (1.5, 3.0)  # размытие «глазом» для деталей
+LOCAL_WINDOW_MM = 8.0  # окно местной яркости/контраста
+TONE_BLUR_MM = 3.0
+TONE_WEIGHT = 0.1
 CURVE_STEP = 100
 
 
@@ -31,6 +42,50 @@ def _blur(a: np.ndarray, sigma: float) -> np.ndarray:
     import cv2
 
     return cv2.GaussianBlur(a.astype(np.float32), (0, 0), max(0.3, sigma))
+
+
+def _local_normalize(a: np.ndarray, sigma: float) -> np.ndarray:
+    """Вычесть местную среднюю и поделить на местный контраст — остаются только детали."""
+    mean = _blur(a, sigma)
+    var = _blur((a - mean) ** 2, sigma)
+    return (a - mean) / np.sqrt(var + 25.0)
+
+
+def _centered(a: np.ndarray) -> tuple[np.ndarray, float]:
+    a = a - a.mean()
+    return a, float(np.sqrt((a * a).sum())) or 1.0
+
+
+class _Scorer:
+    """Готовит эталон один раз и оценивает много рендеров (кривая — десятки точек)."""
+
+    def __init__(self, reference: Image.Image, diameter_cm: float, size: int) -> None:
+        ref_img = reference.convert("L")
+        if ref_img.size != (size, size):
+            ref_img = ref_img.resize((size, size), Image.Resampling.LANCZOS)
+        ref = np.asarray(ref_img, np.float32)
+        self.px = diameter_cm * 10 / size  # мм на пиксель
+        self.mask = circle_mask(size)
+        self.window = LOCAL_WINDOW_MM / self.px
+        self.details = [
+            _centered(_local_normalize(_blur(ref, mm / self.px), self.window)[self.mask]) for mm in DETAIL_SCALES_MM
+        ]
+        self.tone = _centered(_blur(ref, TONE_BLUR_MM / self.px)[self.mask])
+
+    @staticmethod
+    def _corr(a: np.ndarray, ref: tuple[np.ndarray, float]) -> float:
+        a, norm = _centered(a)
+        return float((a * ref[0]).sum() / (norm * ref[1]))
+
+    def score(self, render: np.ndarray) -> float:
+        detail = np.mean(
+            [
+                self._corr(_local_normalize(_blur(render, mm / self.px), self.window)[self.mask], ref)
+                for mm, ref in zip(DETAIL_SCALES_MM, self.details)
+            ]
+        )
+        tone = self._corr(_blur(render, TONE_BLUR_MM / self.px)[self.mask], self.tone)
+        return float((detail + TONE_WEIGHT * tone) / (1 + TONE_WEIGHT))
 
 
 def similarity_curve(
@@ -42,34 +97,22 @@ def similarity_curve(
     step: int = CURVE_STEP,
     size: int = PROCESSING_SIZE,
 ) -> list[tuple[int, float]]:
-    """[(число линий, сходство 0..1), …] от start до stop с шагом step."""
+    """[(число линий, сходство), …] от start до stop с шагом step."""
     stop = min(stop or MAX_LINES, len(sequence) - 1)
     if stop < start:
         raise ValueError("Последовательность короче минимального числа линий")
-    ref_img = reference.convert("L")
-    if ref_img.size != (size, size):
-        ref_img = ref_img.resize((size, size), Image.Resampling.LANCZOS)
-    sigma = VIEW_BLUR_MM / (diameter_cm * 10 / size)
-    mask = circle_mask(size)
-    ref = _blur(np.asarray(ref_img, np.float32), sigma)[mask]
-    ref = ref - ref.mean()
-    ref_norm = float(np.sqrt((ref * ref).sum())) or 1.0
+    scorer = _Scorer(reference, diameter_cm, size)
     log_keep = np.log1p(-line_alpha(size, diameter_cm))  # ln(1 − α): каждая линия умножает яркость
     counts = np.zeros(size * size, dtype=np.float32)
-    checkpoints = list(range(start, stop + 1, step))
     out: list[tuple[int, float]] = []
     done = 0
-    for n in checkpoints:
+    for n in range(start, stop + 1, step):
         if n > done:
             px = np.concatenate([line_pixels(sequence[i], sequence[i + 1], size) for i in range(done, n)])
             counts += np.bincount(px, minlength=size * size).astype(np.float32)
             done = n
         render = (255.0 * np.exp(counts * log_keep)).reshape(size, size)
-        r = _blur(render, sigma)[mask]
-        r = r - r.mean()
-        r_norm = float(np.sqrt((r * r).sum()))
-        score = float((r * ref).sum() / (r_norm * ref_norm)) if r_norm > 0 else 0.0
-        out.append((n, round(score, 4)))
+        out.append((n, round(scorer.score(render), 4)))
     return out
 
 
@@ -109,7 +152,7 @@ def project_similarity(project_id: str, version: str, sequence: Sequence[int], r
 # --- автонастройка тона ----------------------------------------------------------
 AUTO_CONTRASTS = (-0.3, -0.15, 0.0, 0.25)
 AUTO_BRIGHTNESS = (-0.12, 0.12)
-AUTO_LINES = 3000
+AUTO_LINES = MAX_LINES  # лучшее число линий теперь часто 3000–4500
 
 
 def _score_tone(gray: Image.Image, reference: Image.Image, diameter_cm: float, importance) -> tuple[int, float]:

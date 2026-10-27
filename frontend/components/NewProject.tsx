@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { useAutoPrep, usePhotoEditor } from "@/hooks/usePhotoEditor";
+import { routes } from "@/lib/routes";
 import { api, ApiError, type Features, type ImageInfo } from "@/lib/api";
 import { DEFAULT_DIAMETER_CM } from "@/lib/constants";
 import { downscaleImage } from "@/lib/image";
@@ -58,13 +59,14 @@ export function NewProject() {
     setStage("creating");
     setError("");
     try {
+      await editor.flushMask(); // правки фона кистью должны дойти до сервера
       const project = await api.createFromImage({
         image_id: info.id,
         name: name || fileName,
         diameter_cm: diameter,
         prep: editor.prep,
       });
-      router.push(`/projects/${project.id}`);
+      router.push(routes.project(project.id));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Не получилось создать портрет. Попробуйте другое фото.");
       setStage("edit");
@@ -86,6 +88,8 @@ export function NewProject() {
           info={info}
           image={editor.image}
           mask={editor.mask}
+          maskVersion={editor.maskVersion}
+          brush={{ ...editor.brush, tool: editor.tool, size: editor.brushSize }}
           prep={editor.prep}
           onChange={editor.setPrep}
         />
@@ -154,6 +158,16 @@ export function NewProject() {
             maskStatus={editor.maskStatus}
             maskError={editor.maskError}
             maskNote={editor.maskNote}
+            brush={{
+              tool: editor.tool,
+              setTool: editor.setTool,
+              size: editor.brushSize,
+              setSize: editor.setBrushSize,
+              canUndo: editor.canUndo,
+              undo: editor.undo,
+              edited: editor.maskEdited,
+              reset: () => void editor.resetMask(),
+            }}
             auto={auto}
           />
         )}

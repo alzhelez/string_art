@@ -10,6 +10,22 @@ interface MaskState {
   status: "idle" | "processing" | "ready" | "error";
   model: string;
   message: string | null;
+  edited?: boolean;
+  progress?: number | null;
+}
+
+/** Инструмент в окне кадра: двигать кадр или поправлять маску фона кистью. */
+export type BrushTool = "move" | "erase" | "restore";
+
+const UNDO_LIMIT = 8;
+
+/** Маска как редактируемый canvas в размере самой маски (= размер фото). */
+function maskCanvas(img: HTMLImageElement): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth || img.width;
+  c.height = img.naturalHeight || img.height;
+  c.getContext("2d", { willReadFrequently: true })?.drawImage(img, 0, 0);
+  return c;
 }
 
 async function maskRequest(id: string, method: "GET" | "POST"): Promise<MaskState> {
@@ -39,7 +55,18 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Состояние редактора: само фото, маска фона и параметры кадра. */
 export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [mask, setMask] = useState<HTMLImageElement | null>(null);
+  const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
+  const [maskVersion, setMaskVersion] = useState(0);
+  const [maskEdited, setMaskEdited] = useState(false);
+  const [tool, setTool] = useState<BrushTool>("move");
+  const [brushSize, setBrushSize] = useState(0.04);
+  const [canUndo, setCanUndo] = useState(false);
+  const undoStack = useRef<ImageData[]>([]);
+  const lastPoint = useRef<{ x: number; y: number; r: number } | null>(null);
+  const dirty = useRef(false);
+  const uploadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const uploading = useRef<Promise<void>>(Promise.resolve());
+  const frame = useRef(0);
   const [maskStatus, setMaskStatus] = useState<MaskStatus>("idle");
   const [maskError, setMaskError] = useState("");
   const [maskNote, setMaskNote] = useState("");
@@ -58,6 +85,11 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
     setImage(null);
     setMask(null);
     setMaskStatus("idle");
+    setMaskEdited(false);
+    setTool("move");
+    undoStack.current = [];
+    setCanUndo(false);
+    dirty.current = false;
     maskJob.current = null;
     if (!info) return;
     let current = true;
@@ -97,15 +129,18 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
           if (st.status === "error") throw new Error(st.message ?? "Не удалось убрать фон");
           setMaskNote(
             st.model === "loading"
-              ? "Загружаем модель удаления фона. В самый первый раз она скачивается (~170 МБ) — это может занять несколько минут."
+              ? typeof st.progress === "number"
+                ? `Скачиваем модель удаления фона: ${Math.round(st.progress * 100)} % из ~170 МБ. Это нужно один раз.`
+                : "Загружаем модель удаления фона. В самый первый раз она скачивается (~170 МБ) — это может занять несколько минут."
               : "Убираем фон…",
           );
           await sleep(1000);
           st = await maskRequest(id, "GET");
         }
-        const img = await loadImage(api.maskUrl(id));
+        const img = await loadImage(`${api.maskUrl(id)}?v=${Date.now()}`);
         if (!alive.current) return false;
-        setMask(img);
+        setMask(maskCanvas(img));
+        setMaskEdited(Boolean(st.edited));
         setMaskStatus("ready");
         setMaskNote("");
         return true;
@@ -127,7 +162,148 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
     if (prep.remove_background) void ensureMask();
   }, [prep.remove_background, ensureMask]);
 
-  return { image, mask, maskStatus, maskError, maskNote, prep, setPrep, ensureMask };
+  // --- кисть: правка маски фона -------------------------------------------------
+  const bump = useCallback(() => {
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      setMaskVersion((v) => v + 1);
+    });
+  }, []);
+
+  const upload = useCallback(async () => {
+    if (!info || !mask || !dirty.current) return;
+    dirty.current = false;
+    const blob = await new Promise<Blob | null>((resolve) => mask.toBlob(resolve, "image/png"));
+    if (!blob) return;
+    const res = await fetch(`/api/images/${info.id}/mask.png`, {
+      method: "PUT",
+      headers: { "Content-Type": "image/png" },
+      body: blob,
+    }).catch(() => null);
+    if (!res?.ok) {
+      dirty.current = true;
+      if (alive.current) setMaskError("Правка фона не сохранилась — проверьте связь с сервером.");
+      return;
+    }
+    if (alive.current) {
+      setMaskEdited(true);
+      setMaskError("");
+    }
+  }, [info, mask]);
+
+  const scheduleUpload = useCallback(() => {
+    dirty.current = true;
+    if (uploadTimer.current) clearTimeout(uploadTimer.current);
+    uploadTimer.current = setTimeout(() => {
+      uploadTimer.current = null;
+      uploading.current = uploading.current.then(upload);
+    }, 600);
+  }, [upload]);
+
+  /** Дождаться, пока правки кистью дойдут до сервера (перед расчётом портрета). */
+  const flushMask = useCallback(async () => {
+    if (uploadTimer.current) {
+      clearTimeout(uploadTimer.current);
+      uploadTimer.current = null;
+      uploading.current = uploading.current.then(upload);
+    }
+    await uploading.current;
+  }, [upload]);
+
+  const paint = useCallback(
+    (x0: number, y0: number, x1: number, y1: number, r: number, mode: BrushTool) => {
+      const ctx = mask?.getContext("2d");
+      if (!ctx || !info) return;
+      const k = mask!.width / info.width; // маска и фото одного размера, но на всякий случай
+      ctx.save();
+      ctx.strokeStyle = ctx.fillStyle = mode === "erase" ? "#000" : "#fff";
+      ctx.lineWidth = 2 * r * k;
+      ctx.lineCap = ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(x0 * k, y0 * k);
+      ctx.lineTo(x1 * k + 0.01, y1 * k);
+      ctx.stroke();
+      ctx.restore();
+      bump();
+    },
+    [mask, info, bump],
+  );
+
+  /** Кисть: координаты — в пикселях исходного фото, r — радиус там же. */
+  const brush = {
+    begin: (x: number, y: number, r: number) => {
+      const ctx = mask?.getContext("2d", { willReadFrequently: true });
+      if (!ctx || tool === "move") return;
+      undoStack.current.push(ctx.getImageData(0, 0, mask!.width, mask!.height));
+      if (undoStack.current.length > UNDO_LIMIT) undoStack.current.shift();
+      setCanUndo(true);
+      lastPoint.current = { x, y, r };
+      paint(x, y, x, y, r, tool);
+    },
+    move: (x: number, y: number) => {
+      const last = lastPoint.current;
+      if (!last) return;
+      paint(last.x, last.y, x, y, last.r, tool);
+      lastPoint.current = { ...last, x, y };
+    },
+    end: () => {
+      if (!lastPoint.current) return;
+      lastPoint.current = null;
+      scheduleUpload();
+    },
+  };
+
+  const undo = useCallback(() => {
+    const ctx = mask?.getContext("2d");
+    const snap = undoStack.current.pop();
+    if (ctx && snap) {
+      ctx.putImageData(snap, 0, 0);
+      bump();
+      scheduleUpload();
+    }
+    setCanUndo(undoStack.current.length > 0);
+  }, [mask, bump, scheduleUpload]);
+
+  /** Вернуть автоматическую маску (отменить все правки кистью). */
+  const resetMask = useCallback(async () => {
+    if (!info) return;
+    if (uploadTimer.current) clearTimeout(uploadTimer.current);
+    uploadTimer.current = null;
+    dirty.current = false;
+    await uploading.current;
+    await fetch(`/api/images/${info.id}/mask/edits`, { method: "DELETE" }).catch(() => null);
+    undoStack.current = [];
+    setCanUndo(false);
+    maskJob.current = null;
+    await ensureMask();
+  }, [info, ensureMask]);
+
+  useEffect(() => {
+    if (!prep.remove_background || maskStatus !== "ready") setTool("move");
+  }, [prep.remove_background, maskStatus]);
+
+  return {
+    image,
+    mask,
+    maskVersion,
+    maskStatus,
+    maskError,
+    maskNote,
+    maskEdited,
+    prep,
+    setPrep,
+    ensureMask,
+    flushMask,
+    tool,
+    setTool,
+    brushSize,
+    setBrushSize,
+    brush,
+    canUndo,
+    undo,
+    resetMask,
+  };
 }
 
 export type AutoStage = "idle" | "frame" | "background" | "tone" | "done" | "error";
@@ -145,7 +321,7 @@ export function useAutoPrep(
   const [stage, setStage] = useState<AutoStage>("idle");
   const [result, setResult] = useState<AutoTone | null>(null);
   const [error, setError] = useState("");
-  const { prep, setPrep, ensureMask } = editor;
+  const { prep, setPrep, ensureMask, flushMask } = editor;
 
   const run = useCallback(async () => {
     if (!info) return;
@@ -166,6 +342,7 @@ export function useAutoPrep(
       }
       setPrep(next);
       setStage("tone");
+      await flushMask();
       const tone = await api.autoTone(info.id, next, diameterCm);
       setPrep({ ...next, brightness: tone.brightness, contrast: tone.contrast });
       setResult(tone);
@@ -174,7 +351,7 @@ export function useAutoPrep(
       setError(e instanceof ApiError ? e.message : "Автонастройка не удалась.");
       setStage("error");
     }
-  }, [info, features, prep, setPrep, ensureMask, diameterCm]);
+  }, [info, features, prep, setPrep, ensureMask, flushMask, diameterCm]);
 
   return { run, stage, result, error, busy: stage === "frame" || stage === "background" || stage === "tone" };
 }

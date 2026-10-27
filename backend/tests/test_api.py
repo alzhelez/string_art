@@ -225,10 +225,41 @@ def test_similarity_curve(client, project):
     assert lines[0] == 1000 and lines[-1] == 5000 and all(b - a == 100 for a, b in zip(lines, lines[1:]))
     best = max(sim["curve"], key=lambda p: p["score"])
     assert sim["best_lines"] == best["lines"] and sim["best_score"] == best["score"]
-    assert 0.5 < sim["best_score"] <= 1
+    assert 0.2 < sim["best_score"] <= 1
     # на маленьком круге та же леска темнее → максимум раньше, на большом — позже
     small = client.get(f"/api/projects/{pid}/similarity", params={"diameter_cm": 30}).json()
     big = client.get(f"/api/projects/{pid}/similarity", params={"diameter_cm": 100}).json()
     assert small["best_lines"] <= sim["best_lines"] <= big["best_lines"]
     assert client.get(f"/api/projects/{pid}/similarity", params={"diameter_cm": 10}).status_code == 422
     assert client.get("/api/projects/000000000000/similarity").status_code == 404
+
+
+# TC-API-29
+def test_desktop_static_files(client, tmp_path, monkeypatch):
+    """Десктопная версия: бэкенд сам раздаёт собранный фронтенд, API при этом работает как обычно."""
+    web = tmp_path / "web"
+    (web / "project").mkdir(parents=True)
+    (web / "_next" / "static").mkdir(parents=True)
+    (web / "index.html").write_text("<h1>home</h1>", encoding="utf-8")
+    (web / "project.html").write_text("<h1>studio</h1>", encoding="utf-8")
+    (web / "project" / "weave.html").write_text("<h1>weave</h1>", encoding="utf-8")
+    (web / "_next" / "static" / "app.js").write_text("1", encoding="utf-8")
+    (web / "404.html").write_text("<h1>404</h1>", encoding="utf-8")
+    (tmp_path / "secret.txt").write_text("nope", encoding="utf-8")
+    monkeypatch.setenv("STRINGART_STATIC_DIR", str(web))
+
+    assert client.get("/", follow_redirects=False).text == "<h1>home</h1>"
+    assert client.get("/project?id=abc").text == "<h1>studio</h1>"
+    assert client.get("/project/weave").text == "<h1>weave</h1>"
+    js = client.get("/_next/static/app.js")
+    assert js.status_code == 200 and "immutable" in js.headers["cache-control"]
+    missing = client.get("/no/such/page")
+    assert missing.status_code == 404 and missing.text == "<h1>404</h1>"
+    assert client.get("/../secret.txt").status_code == 404
+    assert client.get("/%2e%2e/secret.txt").status_code == 404
+    assert client.get("/api/health").json() == {"status": "ok"}
+    assert client.get("/api/nope").status_code == 404 and client.get("/api/nope").json()["detail"]
+
+    monkeypatch.delenv("STRINGART_STATIC_DIR")
+    assert client.get("/", follow_redirects=False).status_code == 307
+    assert client.get("/project").status_code == 404

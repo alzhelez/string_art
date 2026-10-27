@@ -198,7 +198,7 @@ test.describe("API", () => {
     expect(lines.at(-1)).toBe(C.MAX_LINES);
     const best = sim.curve.reduce((a: { score: number }, b: { score: number }) => (b.score > a.score ? b : a));
     expect(sim.best_lines).toBe(best.lines);
-    expect(sim.best_score).toBeGreaterThan(0.5);
+    expect(sim.best_score).toBeGreaterThan(0.2);
     const small = await (await request.get(`/api/projects/${project.id}/similarity?diameter_cm=30`)).json();
     const big = await (await request.get(`/api/projects/${project.id}/similarity?diameter_cm=100`)).json();
     expect(small.best_lines).toBeLessThanOrEqual(sim.best_lines);

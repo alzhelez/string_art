@@ -111,8 +111,8 @@ def test_face_prep_frames_head():
     p = photo.face_prep(1000, 1000, face)
     assert p.face_focus
     assert p.center_x == pytest.approx(0.5)
-    assert p.center_y == pytest.approx(0.324)  # чуть ниже центра лица — влезают плечи
-    assert p.zoom == pytest.approx(1000 / (200 * 2.4), rel=1e-3)
+    assert p.center_y == pytest.approx(0.32)  # чуть ниже центра лица — влезают плечи
+    assert p.zoom == pytest.approx(1000 / (200 * 2.0), rel=1e-3)
 
 
 def test_face_importance_peaks_on_face():
@@ -138,3 +138,70 @@ def test_importance_pulls_lines_to_region():
 def test_importance_shape_mismatch():
     with pytest.raises(ValueError):
         generate_sequence(np.zeros((10, 10)), max_lines=1, importance=np.ones((5, 5)))
+
+
+
+# --- чистка маски -------------------------------------------------------------
+def _rgb(size=200):
+    yy, xx = np.mgrid[0:size, 0:size]
+    return np.dstack([(xx * 255 // size).astype(np.uint8)] * 3)
+
+
+def test_refine_mask_removes_islands_and_fills_holes():
+    m = np.zeros((200, 200), np.uint8)
+    m[40:200, 60:140] = 255  # человек
+    m[100:104, 100:104] = 0  # дырка-блик внутри
+    m[10:16, 170:176] = 255  # островок фона
+    m[0:30, 0:30] = 90  # полупрозрачная дымка
+    out = photo.refine_mask(_rgb(), m)
+    assert out[102, 102] > 200  # дырка заполнена
+    assert out[12, 172] < 30  # островок убран
+    assert out[15, 15] < 30  # дымка убрана
+    assert out[150, 100] > 240 and out[150, 20] < 15
+    assert out.shape == m.shape and out.dtype == np.uint8
+
+
+def test_refine_mask_keeps_small_part_with_face():
+    m = np.zeros((200, 200), np.uint8)
+    m[60:200, 0:120] = 255  # крупный объект
+    m[10:30, 160:180] = 255  # маленький кусок — но на нём лицо
+    face = photo.Box(0.8, 0.05, 0.1, 0.1)
+    assert photo.refine_mask(_rgb(), m, [face])[20, 170] > 200
+    assert photo.refine_mask(_rgb(), m, [])[20, 170] < 30
+
+
+def test_detect_faces_yunet(face_img=None):
+    if not photo.face_detection_available():
+        pytest.skip("нет OpenCV")
+    from .conftest import FIXTURES
+
+    img = photo.normalize_original(Image.open(FIXTURES / "face.jpg"))
+    faces = photo.detect_faces(img)
+    assert len(faces) == 1
+    f = faces[0]
+    # лицо астронавта: по центру сверху, высота ~20 % кадра
+    assert 0.3 < f.x + f.w / 2 < 0.55 and 0.15 < f.y + f.h / 2 < 0.35 and 0.15 < f.h < 0.3
+    assert photo.YUNET_MODEL.exists()
+    # на однотонной картинке лиц нет
+    assert photo.detect_faces(Image.new("RGB", (400, 300), "white")) == []
+
+
+def test_model_search_and_download_dir(tmp_path, monkeypatch):
+    """Модель ищется там, куда её мог скачать rembg, и в своей папке; качается в STRINGART_MODELS_DIR."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("U2NET_HOME", raising=False)
+    monkeypatch.delenv("REMBG_HOME", raising=False)
+    monkeypatch.setattr(photo, "MODEL_MIN_BYTES", 10)
+    monkeypatch.setenv("STRINGART_MODELS_DIR", str(tmp_path / "ours"))
+    assert photo.find_model() is None
+    old = tmp_path / ".u2net" / photo.MODEL_FILE
+    old.parent.mkdir()
+    old.write_bytes(b"x" * 20)
+    assert photo.find_model() == old
+    ours = tmp_path / "ours" / photo.MODEL_FILE
+    ours.parent.mkdir()
+    ours.write_bytes(b"x" * 5)  # недокачанный файл не считается
+    assert photo.find_model() == old
+    ours.write_bytes(b"x" * 20)
+    assert photo.find_model() == ours
+    assert photo.model_dir() == tmp_path / "ours"

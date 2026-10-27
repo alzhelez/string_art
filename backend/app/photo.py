@@ -22,6 +22,7 @@ import math
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -143,20 +144,50 @@ def png_bytes(img: Image.Image) -> bytes:
 
 
 # --- лицо -------------------------------------------------------------------
+# Основной детектор — YuNet (нейросеть OpenCV, 230 КБ, лежит в app/models, лицензия MIT):
+# находит лица в профиль и в три четверти, не путает надписи на футболке с лицом.
+# Запасной — каскады Хаара (если OpenCV старый и не умеет FaceDetectorYN).
+YUNET_MODEL = Path(__file__).parent / "models" / "face_detection_yunet_2023mar.onnx"
+YUNET_SCORE = 0.7
+HAAR_TO_YUNET_H = 1.2  # рамка Хаара ниже рамки YuNet (без лба и подбородка) — приводим к одной
+
+
 @functools.cache
 def face_detection_available() -> bool:
     try:
         import cv2  # noqa: F401
 
-        return hasattr(cv2, "CascadeClassifier")
+        return hasattr(cv2, "FaceDetectorYN") or hasattr(cv2, "CascadeClassifier")
     except ImportError:
         return False
 
 
-def detect_faces(img: Image.Image) -> list[Box]:
-    """Лица анфас (OpenCV Haar). Крупные — первыми. Пустой список, если OpenCV нет."""
-    if not face_detection_available():
-        return []
+def _detect_yunet(img: Image.Image) -> list[Box] | None:
+    import cv2
+
+    if not hasattr(cv2, "FaceDetectorYN") or not YUNET_MODEL.exists():
+        return None
+    small = img.convert("RGB").copy()
+    small.thumbnail((960, 960))
+    w, h = small.size
+    bgr = cv2.cvtColor(np.asarray(small), cv2.COLOR_RGB2BGR)
+    try:
+        det = cv2.FaceDetectorYN.create(str(YUNET_MODEL), "", (w, h), YUNET_SCORE, 0.3, 50)
+        _, faces = det.detect(bgr)
+    except cv2.error:
+        log.exception("YuNet не запустился — используем каскады Хаара")
+        return None
+    boxes = []
+    for f in [] if faces is None else faces:
+        x, y, bw, bh = (float(v) for v in f[:4])
+        x0, y0 = max(0.0, x), max(0.0, y)
+        x1, y1 = min(float(w), x + bw), min(float(h), y + bh)
+        if x1 - x0 > 8 and y1 - y0 > 8:
+            boxes.append(Box(x0 / w, y0 / h, (x1 - x0) / w, (y1 - y0) / h))
+    return boxes
+
+
+def _detect_haar(img: Image.Image) -> list[Box]:
     import cv2
 
     small = img.convert("L").copy()
@@ -171,18 +202,32 @@ def detect_faces(img: Image.Image) -> list[Box]:
             found = [tuple(int(v) for v in r) for r in rects]
             break
     w, h = small.size
-    boxes = [Box(x / w, y / h, bw / w, bh / h) for x, y, bw, bh in found]
+    out = []
+    for x, y, bw, bh in found:
+        nh = bh * HAAR_TO_YUNET_H
+        y0 = max(0.0, y + bh / 2 - nh / 2)
+        out.append(Box(x / w, y0 / h, bw / w, min(nh, h - y0) / h))
+    return out
+
+
+def detect_faces(img: Image.Image) -> list[Box]:
+    """Лица на фото, крупные первыми. Пустой список, если OpenCV нет или лиц не найдено."""
+    if not face_detection_available():
+        return []
+    boxes = _detect_yunet(img)
+    if boxes is None:
+        boxes = _detect_haar(img)
     return sorted(boxes, key=lambda b: b.w * b.h, reverse=True)
 
 
 def face_prep(width: int, height: int, face: Box, base: Prep | None = None) -> Prep:
-    """Кадр «голова и плечи»: лицо по центру чуть выше середины, сторона ≈ 2,4 высоты лица."""
+    """Кадр «голова и плечи»: лицо по центру чуть выше середины, сторона ≈ 2 высоты лица."""
     base = base or Prep()
     face_px = face.h * height
-    side = min(min(width, height), face_px * 2.4)
+    side = min(min(width, height), face_px * 2.0)
     zoom = min(4.0, max(1.0, min(width, height) / side))
     cx = face.x + face.w / 2
-    cy = face.y + face.h / 2 + 0.12 * face.h
+    cy = face.y + face.h / 2 + 0.1 * face.h
     return Prep(**{**base.to_dict(), "center_x": cx, "center_y": cy, "zoom": round(zoom, 3), "face_focus": True})
 
 
@@ -193,23 +238,58 @@ def face_importance(width: int, height: int, prep: Prep, face: Box, size: int = 
     cx = ((face.x + face.w / 2) * width - x0) * k
     cy = ((face.y + face.h / 2) * height - y0) * k
     rx = face.w * width * k * 0.6
-    ry = face.h * height * k * 0.75
+    ry = face.h * height * k * 0.65
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
     ell = ((xx - cx) / max(rx, 1)) ** 2 + ((yy - cy) / max(ry, 1)) ** 2
     return (1.0 + FACE_IMPORTANCE * np.exp(-np.maximum(ell - 1.0, 0.0) * 3.0)).astype(np.float32)
 
 
 # --- фон --------------------------------------------------------------------
-# Удаление фона — тяжёлая операция: импорт rembg (onnxruntime, numba) на Windows при
-# первом запуске может идти десятки секунд, модель (~170 МБ) скачивается один раз.
-# Поэтому всё это делается в фоне, а HTTP-запросы только узнают статус — ни один
-# запрос не висит дольше секунды, и прокси Next.js не рвёт соединение по таймауту.
+# Удаление фона — нейросеть U²-Net (вариант для людей, ~170 МБ), запускается через
+# onnxruntime. Модель скачивается один раз при первом использовании. Импорт onnxruntime и
+# загрузка модели идут в фоне, а HTTP-запросы только узнают статус — ни один запрос не
+# висит дольше секунды (прокси Next.js рвёт долгие соединения).
 BACKGROUND_MODEL = "u2net_human_seg"
+MODEL_FILE = "u2net_human_seg.onnx"
+MODEL_URL = "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx"
+MODEL_MIN_BYTES = 100 * 1024 * 1024  # настоящий файл ~168 МБ; меньше — недокачан
+_MEAN = np.array([0.485, 0.456, 0.406], np.float32)
+_STD = np.array([0.229, 0.224, 0.225], np.float32)
 
 
 def background_removal_available() -> bool:
-    """Установлен ли rembg. Только поиск модуля, без импорта — это мгновенно."""
-    return importlib.util.find_spec("rembg") is not None
+    """Установлен ли onnxruntime. Только поиск модуля, без импорта — это мгновенно."""
+    return importlib.util.find_spec("onnxruntime") is not None
+
+
+def model_dir() -> Path:
+    """Куда скачивать модель: STRINGART_MODELS_DIR или общая папка rembg (~/.rembg/models/…)."""
+    import os
+
+    custom = os.environ.get("STRINGART_MODELS_DIR")
+    if custom:
+        return Path(custom)
+    return Path.home() / ".rembg" / "models" / BACKGROUND_MODEL
+
+
+def model_candidates() -> list[Path]:
+    """Где модель может уже лежать: наша папка и папки, куда её качал rembg прежних версий."""
+    import os
+
+    paths = [model_dir() / MODEL_FILE, Path.home() / ".rembg" / "models" / BACKGROUND_MODEL / MODEL_FILE]
+    for env in ("U2NET_HOME", "REMBG_HOME"):
+        if os.environ.get(env):
+            base = Path(os.environ[env]).expanduser()
+            paths += [base / MODEL_FILE, base / "models" / BACKGROUND_MODEL / MODEL_FILE]
+    paths.append(Path.home() / ".u2net" / MODEL_FILE)
+    return paths
+
+
+def find_model() -> Path | None:
+    for path in model_candidates():
+        if path.is_file() and path.stat().st_size >= MODEL_MIN_BYTES:
+            return path
+    return None
 
 
 class BackgroundEngine:
@@ -218,51 +298,90 @@ class BackgroundEngine:
     def __init__(self) -> None:
         self.state = "idle"  # idle → loading → ready | error
         self.error: str | None = None
+        self.progress: float | None = None  # доля скачанной модели, пока качается
         self._session = None
         self._lock = threading.Lock()
+        self._run_lock = threading.Lock()
         self._ready = threading.Event()
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bg-mask")
         self._jobs: dict[str, Future] = {}
 
     def status(self) -> dict:
-        return {"installed": background_removal_available(), "state": self.state, "error": self.error}
+        return {
+            "installed": background_removal_available(),
+            "state": self.state,
+            "error": self.error,
+            "progress": self.progress,
+        }
 
     def warm_up(self) -> None:
         """Начать загрузку модели в фоне (вызывается при старте бэкенда)."""
         if not background_removal_available():
             return
         with self._lock:
-            if self.state != "idle":
+            if self.state not in ("idle", "error"):
                 return
             self.state = "loading"
+            self.error = None
+            self._ready.clear()
         threading.Thread(target=self._load, name="bg-model", daemon=True).start()
+
+    def _download(self) -> Path:
+        import urllib.request
+
+        target = model_dir() / MODEL_FILE
+        target.parent.mkdir(parents=True, exist_ok=True)
+        part = target.with_suffix(".part")
+        log.info("Удаление фона: скачиваем модель (~170 МБ) в %s", target)
+        with urllib.request.urlopen(MODEL_URL, timeout=60) as resp, open(part, "wb") as out:
+            total = int(resp.headers.get("Content-Length") or 0)
+            done = 0
+            while chunk := resp.read(1 << 20):
+                out.write(chunk)
+                done += len(chunk)
+                self.progress = done / total if total else None
+        if part.stat().st_size < MODEL_MIN_BYTES:
+            part.unlink(missing_ok=True)
+            raise RuntimeError("модель скачалась не полностью — проверьте интернет и попробуйте ещё раз")
+        part.replace(target)
+        self.progress = None
+        return target
 
     def _load(self) -> None:
         try:
-            log.info("Удаление фона: загружаем модель %s (при первом запуске скачивается ~170 МБ)…", BACKGROUND_MODEL)
-            from rembg import new_session
+            import onnxruntime as ort
 
-            self._session = new_session(BACKGROUND_MODEL)
+            path = find_model() or self._download()
+            log.info("Удаление фона: загружаем модель %s", path)
+            opts = ort.SessionOptions()
+            opts.log_severity_level = 3
+            self._session = ort.InferenceSession(str(path), sess_options=opts, providers=["CPUExecutionProvider"])
             self.state = "ready"
             log.info("Удаление фона: модель готова")
         except Exception as exc:  # noqa: BLE001 — показываем пользователю любую причину
             self.state = "error"
+            self.progress = None
             self.error = f"Не удалось загрузить модель удаления фона: {exc}"
             log.exception("Удаление фона: ошибка загрузки модели")
         finally:
             self._ready.set()
 
     def mask(self, img: Image.Image) -> Image.Image:
-        """Синхронно: дождаться модели и посчитать маску (L, 255 — человек)."""
+        """Синхронно: дождаться модели и посчитать сырую маску (L, 255 — человек)."""
         self.warm_up()
         self._ready.wait()
         if self.state != "ready":
             raise RuntimeError(self.error or "Модель удаления фона недоступна")
-        from rembg import remove
-
-        with self._lock:
-            mask = remove(img.convert("RGB"), session=self._session, only_mask=True)
-        return mask.convert("L")
+        rgb = img.convert("RGB")
+        small = np.asarray(rgb.resize((320, 320), Image.Resampling.LANCZOS), np.float32)
+        x = small / max(float(small.max()), 1e-6)
+        x = ((x - _MEAN) / _STD).transpose(2, 0, 1)[None].astype(np.float32)
+        with self._run_lock:
+            out = self._session.run(None, {self._session.get_inputs()[0].name: x})[0][0, 0]
+        lo, hi = float(out.min()), float(out.max())
+        pred = (out - lo) / (hi - lo) if hi > lo else np.zeros_like(out)
+        mask = Image.fromarray((pred * 255).astype(np.uint8), mode="L")
+        return mask.resize(rgb.size, Image.Resampling.LANCZOS)
 
     def submit(self, key: str, job) -> Future:
         """Поставить расчёт маски в очередь (повторный вызов вернёт ту же задачу)."""
@@ -280,8 +399,73 @@ class BackgroundEngine:
 engine = BackgroundEngine()
 
 
-def background_mask(img: Image.Image) -> Image.Image:
-    return engine.mask(img)
+def background_mask(img: Image.Image, faces: list[Box] | None = None) -> Image.Image:
+    """Маска «человек/фон» (L, 255 — человек) после чистки — см. refine_mask."""
+    raw = engine.mask(img)
+    return Image.fromarray(refine_mask(np.asarray(img.convert("RGB")), np.asarray(raw), faces or []))
+
+
+# --- чистка маски ---------------------------------------------------------------
+def _box_filter(a: np.ndarray, r: int) -> np.ndarray:
+    import cv2
+
+    return cv2.boxFilter(a, -1, (2 * r + 1, 2 * r + 1), borderType=cv2.BORDER_REFLECT)
+
+
+def _guided_filter(guide: np.ndarray, src: np.ndarray, r: int, eps: float) -> np.ndarray:
+    """Guided filter (He et al.): края маски «прилипают» к краям на фото — волосы, плечи."""
+    mi, mp = _box_filter(guide, r), _box_filter(src, r)
+    cov = _box_filter(guide * src, r) - mi * mp
+    var = _box_filter(guide * guide, r) - mi * mi
+    a = cov / (var + eps)
+    b = mp - a * mi
+    return _box_filter(a, r) * guide + _box_filter(b, r)
+
+
+def refine_mask(rgb: np.ndarray, mask: np.ndarray, faces: list[Box] = ()) -> np.ndarray:
+    """Чистит сырую маску нейросети.
+
+    1. Убирает «островки» фона, которые модель приняла за человека: остаются крупные куски
+       (≥ 8 % от самого большого) и всё, что пересекается с найденным лицом.
+    2. Заполняет мелкие дыры внутри фигуры (блики, пуговицы, серьги).
+    3. Убирает полупрозрачную дымку: что модель считала «скорее фоном», становится фоном.
+    4. Подгоняет край к краям на фото (guided filter) — волосы и плечи без ступенек и ореола.
+    """
+    import cv2
+
+    h, w = mask.shape
+    a = mask.astype(np.float32) / 255.0
+    core = (a > 0.5).astype(np.uint8)
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(core, connectivity=8)
+    if n > 1:
+        areas = stats[1:, cv2.CC_STAT_AREA]
+        keep = np.zeros(n, dtype=bool)
+        keep[1:] = areas >= 0.08 * areas.max()
+        for f in faces:
+            x0, y0 = int(f.x * w), int(f.y * h)
+            x1, y1 = max(x0 + 1, int((f.x + f.w) * w)), max(y0 + 1, int((f.y + f.h) * h))
+            ids = np.unique(labels[y0:y1, x0:x1])
+            keep[ids[ids > 0]] = True
+        kept = keep[labels]
+        k = max(3, round(min(h, w) / 60)) | 1
+        near = cv2.dilate(kept.astype(np.uint8), np.ones((k, k), np.uint8)) > 0
+        a = np.where(near & ~(core.astype(bool) & ~kept), a, 0.0)
+
+    solid = (a > 0.5).astype(np.uint8)
+    person = int(solid.sum())
+    n2, labels2, stats2, _ = cv2.connectedComponentsWithStats(1 - solid, connectivity=4)
+    for i in range(1, n2):
+        x, y, bw, bh, area = stats2[i]
+        inside = x > 0 and y > 0 and x + bw < w and y + bh < h
+        if inside and area < 0.01 * person:
+            a[labels2 == i] = 1.0
+
+    a = np.clip((a - 0.2) / 0.6, 0.0, 1.0)
+    a = a * a * (3.0 - 2.0 * a)
+
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
+    a = _guided_filter(gray, a.astype(np.float32), max(2, round(min(h, w) / 200)), 1e-3)
+    return np.clip(np.rint(a * 255.0), 0, 255).astype(np.uint8)
 
 
 def clamp_prep(prep: Prep) -> Prep:

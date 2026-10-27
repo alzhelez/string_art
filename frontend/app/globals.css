@@ -1450,3 +1450,48 @@ kbd {
     transition: none !important;
   }
 }
+
+/* --- кисть для правки фона ---------------------------------------------------- */
+.editor-view {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.editor-view.is-painting .editor-canvas {
+  cursor: none;
+  touch-action: none;
+}
+
+.brush-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.65);
+  z-index: 2;
+  will-change: transform;
+}
+
+.is-erase .brush-cursor {
+  background: rgba(225, 60, 90, 0.18);
+}
+
+.is-restore .brush-cursor {
+  background: rgba(60, 120, 255, 0.18);
+}
+
+.brush-panel {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.brush-title {
+  margin: 0;
+  font-weight: 600;
+}

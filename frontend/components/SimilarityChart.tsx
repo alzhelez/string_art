@@ -19,7 +19,7 @@ export function SimilarityChart({ data, lines }: { data: Similarity; lines: numb
   const current = data.curve.reduce((a, b) => (Math.abs(b.lines - lines) < Math.abs(a.lines - lines) ? b : a));
 
   return (
-    <figure className="sim-chart" aria-label={`График сходства с фото: максимум ${pctText(data.best_score)} при ${data.best_lines} линиях`}>
+    <figure className="sim-chart" aria-label={`График сходства с фото: лучшее при ${data.best_lines} линиях`}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
         <path d={area} className="sim-area" />
         <path d={path} className="sim-line" />
@@ -28,14 +28,20 @@ export function SimilarityChart({ data, lines }: { data: Similarity; lines: numb
       </svg>
       <figcaption>
         <span data-testid="similarity-current">
-          Сходство с фото: <strong>{pctText(current.score)}</strong>
+          Сходство с фото: <strong>{pctText(relativeScore(current.score, data))}</strong> от лучшего
         </span>
-        <span className="muted">
-          максимум {pctText(data.best_score)} при {num(data.best_lines)}
-        </span>
+        <span className="muted">лучшее — при {num(data.best_lines)}</span>
       </figcaption>
     </figure>
   );
 }
 
 export const pctText = (v: number) => `${num(v * 100, 1)} %`;
+
+/**
+ * Сходство относительно лучшей точки кривой (0..1). Абсолютное значение метрики
+ * (корреляция деталей ~0,4–0,6) человеку ничего не говорит, а «97 % от лучшего» — понятно.
+ */
+export function relativeScore(score: number, data: Similarity): number {
+  return data.best_score > 0 ? Math.max(0, Math.min(1, score / data.best_score)) : 0;
+}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { routes } from "@/lib/routes";
 import { api, ApiError, type ProjectSummary } from "@/lib/api";
 import { date, num } from "@/lib/format";
 
@@ -64,7 +65,7 @@ export function ProjectList() {
             const done = p.current_step - 1;
             return (
               <li key={p.id}>
-                <Link href={`/projects/${p.id}`} className="card" data-testid="project-card">
+                <Link href={routes.project(p.id)} className="card" data-testid="project-card">
                   <span className="card-art">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={api.previewUrl(p.id, 320)} alt="" loading="lazy" width={160} height={160} />

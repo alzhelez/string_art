@@ -1,14 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { WeavePlayer } from "@/components/WeavePlayer";
 import { useDebouncedPatch } from "@/hooks/useDebouncedPatch";
+import { routes, useProjectId } from "@/lib/routes";
 import { api, ApiError, type Project } from "@/lib/api";
 
 export default function WeavePage() {
-  const { id } = useParams<{ id: string }>();
+  return (
+    <Suspense fallback={<p className="muted">Загружаем…</p>}>
+      <WeavePageInner />
+    </Suspense>
+  );
+}
+
+function WeavePageInner() {
+  const id = useProjectId();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -40,7 +48,7 @@ export default function WeavePage() {
   return (
     <div className="weave-page">
       <nav className="crumbs">
-        <Link href={`/projects/${project.id}`}>{project.name}</Link>
+        <Link href={routes.project(project.id)}>{project.name}</Link>
       </nav>
       {saveError && (
         <p className="form-error" role="alert">

@@ -105,3 +105,12 @@ describe("api-клиент", () => {
     expect(JSON.parse(String(init.body))).toEqual({ current_step: 5 });
   });
 });
+
+describe("routes", () => {
+  it("адреса страниц проекта — с ?id=, чтобы работала статическая сборка", async () => {
+    const { routes } = await import("@/lib/routes");
+    expect(routes.project("abc123def456")).toBe("/project?id=abc123def456");
+    expect(routes.weave("abc123def456")).toBe("/project/weave?id=abc123def456");
+    expect(routes.photo("a b")).toBe("/project/photo?id=a%20b");
+  });
+});

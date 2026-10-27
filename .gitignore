@@ -16,3 +16,7 @@ autotests/csharp/bin/
 autotests/csharp/obj/
 frontend/AGENTS.md
 frontend/CLAUDE.md
+# Десктопная сборка
+frontend/out/
+/dist/
+/build/

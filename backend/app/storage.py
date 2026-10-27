@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS images (
 # Колонки, добавленные после первой версии: старые базы дополняются при подключении.
 _MIGRATIONS = {
     "projects": {"image_id": "TEXT", "prep": "TEXT NOT NULL DEFAULT '{}'"},
+    # mask_source: 'auto' — маска нейросети после чистки, 'edited' — поправлена кистью.
+    # NULL у старых масок (до чистки) — такие считаются заново при первом запросе.
+    "images": {"mask_auto": "BLOB", "mask_source": "TEXT"},
 }
 
 EDITABLE_FIELDS = ("name", "diameter_cm", "line_count", "current_step", "speed_sec")
@@ -188,19 +191,40 @@ def create_image(*, width: int, height: int, original: bytes, faces: list[dict])
 
 
 def get_image(image_id: str, *, with_blobs: bool = False) -> dict[str, Any] | None:
-    columns = "id, created_at, width, height, faces" + (", original, mask" if with_blobs else ", mask IS NOT NULL AS has_mask")
+    columns = "id, created_at, width, height, faces, mask_source" + (
+        ", original, mask" if with_blobs else ", (mask IS NOT NULL AND mask_source IS NOT NULL) AS has_mask"
+    )
     with _connect() as conn:
         row = conn.execute(f"SELECT {columns} FROM images WHERE id = ?", (image_id,)).fetchone()
     if not row:
         return None
     data = dict(row)
     data["faces"] = json.loads(data["faces"])
+    if with_blobs and data["mask_source"] is None:
+        data["mask"] = None  # маска старой версии — пересчитаем
     return data
 
 
-def save_mask(image_id: str, mask_png: bytes) -> None:
+def save_mask(image_id: str, mask_png: bytes, *, edited: bool = False) -> None:
+    """Автоматическая маска запоминается отдельно — к ней можно вернуться после правок кистью."""
     with _connect() as conn:
-        conn.execute("UPDATE images SET mask = ? WHERE id = ?", (mask_png, image_id))
+        if edited:
+            conn.execute("UPDATE images SET mask = ?, mask_source = 'edited' WHERE id = ?", (mask_png, image_id))
+        else:
+            conn.execute(
+                "UPDATE images SET mask = ?, mask_auto = ?, mask_source = 'auto' WHERE id = ?",
+                (mask_png, mask_png, image_id),
+            )
+
+
+def reset_mask(image_id: str) -> None:
+    """Отменить правки кистью: вернуть автоматическую маску (или считать заново, если её нет)."""
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE images SET mask = mask_auto,"
+            " mask_source = CASE WHEN mask_auto IS NULL THEN NULL ELSE 'auto' END WHERE id = ?",
+            (image_id,),
+        )
 
 
 def delete_orphan_images(older_than: timedelta = timedelta(days=1)) -> int:

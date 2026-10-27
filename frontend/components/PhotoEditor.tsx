@@ -1,40 +1,56 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { AutoStage, MaskStatus } from "@/hooks/usePhotoEditor";
+import type { AutoStage, BrushTool, MaskStatus } from "@/hooks/usePhotoEditor";
 import type { AutoTone, Features, ImageInfo } from "@/lib/api";
 import { num } from "@/lib/format";
-import { DEFAULT_PREP, drawPrepared, pan, PREP_LIMITS, type Prep } from "@/lib/prep";
+import { cropBox, DEFAULT_PREP, drawPrepared, pan, PREP_LIMITS, type Prep } from "@/lib/prep";
 import { NailRing } from "./NailRing";
 import { Slider, Switch } from "./ui/Controls";
 import { Icon } from "./ui/Icon";
 
 // --- Окно кадра ---------------------------------------------------------------
+export interface BrushApi {
+  tool: BrushTool;
+  /** Радиус кисти — доля стороны кадра. */
+  size: number;
+  begin: (x: number, y: number, r: number) => void;
+  move: (x: number, y: number) => void;
+  end: () => void;
+}
+
 interface ViewportProps {
   info: ImageInfo;
   image: HTMLImageElement | null;
-  mask: HTMLImageElement | null;
+  mask: HTMLCanvasElement | null;
+  /** Меняется при каждой правке маски кистью — сигнал перерисовать. */
+  maskVersion?: number;
   prep: Prep;
   onChange: (p: Prep) => void;
+  brush?: BrushApi;
 }
 
 /**
  * Фото внутри кольца гвоздей: тянуть — сдвиг, колесо или два пальца — масштаб.
+ * В режиме кисти — стирать фон или возвращать части человека.
  * Показывает ровно то, что получит алгоритм (кадр в оттенках серого).
  */
-export function PhotoViewport({ info, image, mask, prep, onChange }: ViewportProps) {
+export function PhotoViewport({ info, image, mask, maskVersion = 0, prep, onChange, brush }: ViewportProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ dist: number; zoom: number } | null>(null);
+  const stroking = useRef(false);
   const prepRef = useRef(prep);
   prepRef.current = prep;
+  const painting = Boolean(brush && brush.tool !== "move" && mask && prep.remove_background);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !image) return;
-    const raf = requestAnimationFrame(() => drawPrepared(canvas, image, mask, prep));
+    const raf = requestAnimationFrame(() => drawPrepared(canvas, image, mask, prep, undefined, { showRemoved: painting }));
     return () => cancelAnimationFrame(raf);
-  }, [image, mask, prep]);
+  }, [image, mask, maskVersion, prep, painting]);
 
   // Колесо мыши: preventDefault работает только у не-passive обработчика
   useEffect(() => {
@@ -51,8 +67,30 @@ export function PhotoViewport({ info, image, mask, prep, onChange }: ViewportPro
 
   const viewport = () => canvasRef.current?.getBoundingClientRect().width || 1;
 
+  /** Точка на экране → пиксель исходного фото. */
+  const toPhoto = (clientX: number, clientY: number) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const [x0, y0, side] = cropBox(info.width, info.height, prepRef.current);
+    return {
+      x: x0 + ((clientX - rect.left) / rect.width) * side,
+      y: y0 + ((clientY - rect.top) / rect.height) * side,
+      r: (brush?.size ?? 0) * side,
+    };
+  };
+
+  const moveCursor = (clientX: number, clientY: number) => {
+    const el = cursorRef.current;
+    const canvas = canvasRef.current;
+    if (!el || !canvas || !brush) return;
+    const rect = canvas.getBoundingClientRect();
+    const parent = canvas.parentElement!.getBoundingClientRect();
+    const d = brush.size * 2 * rect.width;
+    el.style.width = el.style.height = `${d}px`;
+    el.style.transform = `translate(${clientX - parent.left - d / 2}px, ${clientY - parent.top - d / 2}px)`;
+  };
+
   return (
-    <div className="editor-view">
+    <div className={`editor-view ${painting ? `is-painting is-${brush!.tool}` : ""}`}>
       <NailRing className="drop-ring" />
       <canvas
         ref={canvasRef}
@@ -61,17 +99,33 @@ export function PhotoViewport({ info, image, mask, prep, onChange }: ViewportPro
         height={400}
         tabIndex={0}
         role="img"
-        aria-label="Кадр портрета. Перетащите, чтобы сдвинуть; колесо мыши или клавиши плюс и минус — масштаб; стрелки — сдвиг."
+        aria-label={
+          painting
+            ? brush!.tool === "erase"
+              ? "Кадр портрета. Проведите по фото, чтобы сделать это место фоном."
+              : "Кадр портрета. Проведите по фото, чтобы вернуть убранную часть."
+            : "Кадр портрета. Перетащите, чтобы сдвинуть; колесо мыши или клавиши плюс и минус — масштаб; стрелки — сдвиг."
+        }
         data-testid="photo-viewport"
+        data-tool={painting ? brush!.tool : "move"}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           if (pointers.current.size === 2) {
+            if (stroking.current) {
+              stroking.current = false;
+              brush?.end();
+            }
             const [a, b] = [...pointers.current.values()];
             pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom: prepRef.current.zoom };
+          } else if (painting) {
+            const pt = toPhoto(e.clientX, e.clientY);
+            stroking.current = true;
+            brush!.begin(pt.x, pt.y, pt.r);
           }
         }}
         onPointerMove={(e) => {
+          if (painting) moveCursor(e.clientX, e.clientY);
           const prev = pointers.current.get(e.pointerId);
           if (!prev) return;
           pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -80,15 +134,28 @@ export function PhotoViewport({ info, image, mask, prep, onChange }: ViewportPro
             const [a, b] = [...pointers.current.values()];
             const dist = Math.hypot(a.x - b.x, a.y - b.y);
             onChange({ ...p, zoom: pinch.current.zoom * (dist / pinch.current.dist) });
-          } else if (pointers.current.size === 1) {
+          } else if (stroking.current) {
+            const pt = toPhoto(e.clientX, e.clientY);
+            brush!.move(pt.x, pt.y);
+          } else if (pointers.current.size === 1 && !painting) {
             onChange(pan(info.width, info.height, p, e.clientX - prev.x, e.clientY - prev.y, viewport()));
           }
         }}
         onPointerUp={(e) => {
           pointers.current.delete(e.pointerId);
           if (pointers.current.size < 2) pinch.current = null;
+          if (stroking.current) {
+            stroking.current = false;
+            brush?.end();
+          }
         }}
-        onPointerCancel={(e) => pointers.current.delete(e.pointerId)}
+        onPointerCancel={(e) => {
+          pointers.current.delete(e.pointerId);
+          if (stroking.current) {
+            stroking.current = false;
+            brush?.end();
+          }
+        }}
         onKeyDown={(e) => {
           const p = prepRef.current;
           const step = viewport() / 20;
@@ -108,12 +175,81 @@ export function PhotoViewport({ info, image, mask, prep, onChange }: ViewportPro
           }
         }}
       />
+      {painting && <div ref={cursorRef} className="brush-cursor" aria-hidden="true" />}
       {!image && <span className="editor-loading">Загружаем фото…</span>}
     </div>
   );
 }
 
 // --- Настройки ----------------------------------------------------------------
+export interface BrushControls {
+  tool: BrushTool;
+  setTool: (t: BrushTool) => void;
+  size: number;
+  setSize: (v: number) => void;
+  canUndo: boolean;
+  undo: () => void;
+  edited: boolean;
+  reset: () => void;
+}
+
+const TOOLS: { value: BrushTool; label: string; icon: "move" | "eraser" | "brush" }[] = [
+  { value: "move", label: "Кадр", icon: "move" },
+  { value: "erase", label: "Стереть", icon: "eraser" },
+  { value: "restore", label: "Вернуть", icon: "brush" },
+];
+
+/** Ручная правка фона: где нейросеть ошиблась, можно стереть лишнее или вернуть нужное. */
+function BrushPanel({ b }: { b: BrushControls }) {
+  return (
+    <div className="brush-panel" data-testid="brush-panel">
+      <p className="brush-title">Поправить фон кистью</p>
+      <div className="segmented-wide" role="radiogroup" aria-label="Инструмент">
+        {TOOLS.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            role="radio"
+            aria-checked={b.tool === t.value}
+            onClick={() => b.setTool(t.value)}
+          >
+            <Icon name={t.icon} size={18} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {b.tool !== "move" && (
+        <Slider
+          id="brush-size"
+          label="Размер кисти"
+          min={0.01}
+          max={0.12}
+          step={0.005}
+          value={b.size}
+          display={`${num(Math.round(b.size * 200))} %`}
+          onChange={b.setSize}
+        />
+      )}
+      <small className="muted">
+        {b.tool === "erase"
+          ? "Проведите по лишнему — оно станет фоном."
+          : b.tool === "restore"
+            ? "Проведите по бледно-розовому — эта часть вернётся."
+            : "Выберите «Стереть» или «Вернуть» и проведите по фото. Убранный фон в режиме кисти виден бледно-розовым."}
+      </small>
+      <div className="photo-actions">
+        <button type="button" className="btn ghost small" onClick={b.undo} disabled={!b.canUndo}>
+          <Icon name="undo" size={18} />
+          Отменить
+        </button>
+        <button type="button" className="btn ghost small" onClick={b.reset} disabled={!b.edited && !b.canUndo}>
+          Вернуть как было
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface ControlsProps {
   info: ImageInfo;
   features: Features | null;
@@ -137,7 +273,7 @@ export interface AutoProps {
 const AUTO_STAGE_TEXT: Partial<Record<AutoStage, string>> = {
   frame: "Ищем лицо и выбираем кадр…",
   background: "Убираем фон…",
-  tone: "Подбираем яркость и контраст: пробуем 6 вариантов и сравниваем результат нитями с фото…",
+  tone: "Подбираем яркость и контраст: пробуем 6 вариантов и сравниваем результат нитями с фото (15–20 секунд)…",
 };
 
 function AutoPanel({ auto }: { auto: AutoProps }) {
@@ -153,8 +289,14 @@ function AutoPanel({ auto }: { auto: AutoProps }) {
           AUTO_STAGE_TEXT[auto.stage]
         ) : auto.stage === "done" && r ? (
           <span data-testid="auto-result">
-            Сходство с фото {pct(r.score_before)} → <strong>{pct(r.score_after)}</strong>. Яркость {percent(r.brightness)},
-            контраст {percent(r.contrast)}.
+            {r.score_after > r.score_before + 1e-4 ? (
+              <>
+                Сходство с фото выросло на <strong>{gain(r)}</strong>.
+              </>
+            ) : (
+              <>Фото и так подходит — сходство с фото уже лучшее.</>
+            )}{" "}
+            Яркость {percent(r.brightness)}, контраст {percent(r.contrast)}.
           </span>
         ) : auto.stage === "error" ? (
           <span role="alert" className="text-danger">
@@ -168,7 +310,7 @@ function AutoPanel({ auto }: { auto: AutoProps }) {
   );
 }
 
-const pct = (v: number) => `${num(v * 100, 1)} %`;
+const gain = (r: AutoTone) => `${num(((r.score_after - r.score_before) / Math.max(1e-6, r.score_before)) * 100, 1)} %`;
 
 export function PhotoControls({
   info,
@@ -179,7 +321,8 @@ export function PhotoControls({
   maskError,
   maskNote,
   auto,
-}: ControlsProps & { auto?: AutoProps }) {
+  brush,
+}: ControlsProps & { auto?: AutoProps; brush?: BrushControls }) {
   const hasFace = info.faces.length > 0 && info.face_prep !== null;
   const faceDisabled = !features?.face_detection || !hasFace;
   const bgDisabled = !features?.background_removal || maskStatus === "loading";
@@ -258,6 +401,7 @@ export function PhotoControls({
           }
         />
       </div>
+      {brush && prep.remove_background && maskStatus === "ready" && <BrushPanel b={brush} />}
 
       <div className="photo-actions">
         <button

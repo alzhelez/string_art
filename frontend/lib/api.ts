@@ -95,7 +95,10 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   list: () => request<ProjectSummary[]>("/api/projects", { cache: "no-store" }),
-  get: (id: string) => request<Project>(`/api/projects/${id}`, { cache: "no-store" }),
+  get: (id: string) =>
+    /^[0-9a-f]{12}$/.test(id)
+      ? request<Project>(`/api/projects/${id}`, { cache: "no-store" })
+      : Promise.reject(new ApiError(404, "Проект не найден")),
   create: (file: Blob, filename: string, name: string, diameterCm: number) => {
     const form = new FormData();
     form.append("file", file, filename);

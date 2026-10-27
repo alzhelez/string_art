@@ -159,6 +159,7 @@ export function drawPrepared(
   mask: Source | null,
   p: Prep,
   size = PREP_SIZE,
+  opts: { showRemoved?: boolean } = {},
 ): boolean {
   const rgba = cropToPixels(image, p, size, image.width, image.height);
   if (!rgba) return false;
@@ -170,7 +171,8 @@ export function drawPrepared(
       for (let i = 0; i < maskPx.length; i++) maskPx[i] = m[i * 4];
     }
   }
-  const out = processGray(toGray(rgba), p, maskPx);
+  const gray = toGray(rgba);
+  const out = processGray(gray, p, maskPx);
   const ctx = target.getContext("2d");
   if (!ctx) return false;
   target.width = size;
@@ -179,6 +181,17 @@ export function drawPrepared(
   for (let i = 0; i < out.length; i++) {
     img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = out[i];
     img.data[i * 4 + 3] = 255;
+  }
+  if (opts.showRemoved && maskPx) {
+    // Режим кисти: убранный фон виден бледно-розовым — понятно, что можно вернуть.
+    for (let i = 0; i < out.length; i++) {
+      const a = maskPx[i] / 255;
+      if (a > 0.99) continue;
+      const t = 150 + gray[i] * 0.4;
+      img.data[i * 4] = Math.round(out[i] * a + t * (1 - a));
+      img.data[i * 4 + 1] = Math.round(out[i] * a + t * 0.72 * (1 - a));
+      img.data[i * 4 + 2] = Math.round(out[i] * a + t * 0.8 * (1 - a));
+    }
   }
   ctx.putImageData(img, 0, 0);
   return true;

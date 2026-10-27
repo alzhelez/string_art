@@ -1,21 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Board } from "@/components/Board";
 import { DiameterPicker } from "@/components/DiameterPicker";
 import { SimilarityChart } from "@/components/SimilarityChart";
 import { Section, Slider } from "@/components/ui/Controls";
 import { Icon } from "@/components/ui/Icon";
 import { useDebouncedPatch } from "@/hooks/useDebouncedPatch";
+import { routes, useProjectId } from "@/lib/routes";
 import { api, ApiError, type Project, type Similarity } from "@/lib/api";
 import { MAX_LINES, MIN_LINES } from "@/lib/constants";
 import { num } from "@/lib/format";
 import { spoolText, threadStats } from "@/lib/thread";
 
 export default function StudioPage() {
-  const { id } = useParams<{ id: string }>();
+  return (
+    <Suspense fallback={<p className="muted">Загружаем…</p>}>
+      <StudioPageInner />
+    </Suspense>
+  );
+}
+
+function StudioPageInner() {
+  const id = useProjectId();
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState("");
@@ -139,7 +148,7 @@ export default function StudioPage() {
 
           <div className="cta-row">
             <Link
-              href={`/projects/${project.id}/weave`}
+              href={routes.weave(project.id)}
               className="btn primary"
               onClick={() => void flush()}
               data-testid="start-weaving"
@@ -182,7 +191,7 @@ export default function StudioPage() {
                 ) : (
                   <>
                     Рекомендуем <strong>{num(recommended)}</strong> — при этом количестве картина больше всего похожа на
-                    фото.{" "}
+                    фото: черты лица уже чёткие, а тон ещё не ушёл в черноту.{" "}
                     {lines !== recommended && (
                       <button type="button" className="link-btn" onClick={() => setLineCount(recommended)}>
                         Поставить {num(recommended)}
@@ -224,7 +233,7 @@ export default function StudioPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className="photo-thumb" src={api.sourceUrl(project.id)} alt="Фото после обработки" width={72} height={72} />
               {project.image_id ? (
-                <Link href={`/projects/${project.id}/photo`} className="btn secondary small" data-testid="edit-photo">
+                <Link href={routes.photo(project.id)} className="btn secondary small" data-testid="edit-photo">
                   <Icon name="image" size={18} />
                   Изменить фото
                 </Link>

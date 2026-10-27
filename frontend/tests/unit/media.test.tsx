@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MediaPanel } from "@/components/MediaPanel";
 import { SimilarityChart } from "@/components/SimilarityChart";
@@ -134,10 +134,13 @@ describe("SimilarityChart", () => {
     ],
   };
 
-  it("показывает сходство ближайшей точки и максимум", () => {
+  it("показывает сходство ближайшей точки относительно лучшей", () => {
     render(<SimilarityChart data={data} lines={4800} />);
-    expect(screen.getByTestId("similarity-current")).toHaveTextContent(/88,0\s%/);
-    expect(screen.getByRole("figure")).toHaveAccessibleName(/максимум 91,2\s% при 2200 линиях/);
+    expect(screen.getByTestId("similarity-current")).toHaveTextContent(/96,5\s% от лучшего/);
+    expect(screen.getByRole("figure")).toHaveAccessibleName(/лучшее при 2200 линиях/);
+    cleanup();
+    render(<SimilarityChart data={data} lines={2200} />);
+    expect(screen.getByTestId("similarity-current")).toHaveTextContent(/100,0\s% от лучшего/);
   });
 });
 

@@ -141,7 +141,7 @@ def _wait_mask(client, image_id, timeout=300):
     raise AssertionError("маска не посчиталась")
 
 
-@pytest.mark.skipif(not photo.background_removal_available(), reason="rembg не установлен")
+@pytest.mark.skipif(not photo.background_removal_available(), reason="onnxruntime не установлен")
 def test_background_removal(client, image):
     assert client.get(f"/api/images/{image['id']}/mask.png").status_code == 409  # ещё не считали
     r = client.post(f"/api/images/{image['id']}/mask")
@@ -164,7 +164,7 @@ def test_mask_request_never_blocks(client, image, monkeypatch):
     import time
 
     monkeypatch.setattr(photo, "background_removal_available", lambda: True)
-    monkeypatch.setattr(photo, "background_mask", lambda img: (time.sleep(1.0), Image.new("L", img.size, 255))[1])
+    monkeypatch.setattr(photo, "background_mask", lambda img, faces=None: (time.sleep(1.0), Image.new("L", img.size, 255))[1])
     t = time.time()
     r = client.post(f"/api/images/{image['id']}/mask")
     assert time.time() - t < 0.5
@@ -176,7 +176,7 @@ def test_mask_request_never_blocks(client, image, monkeypatch):
 def test_mask_error_is_reported(client, image, monkeypatch):
     monkeypatch.setattr(photo, "background_removal_available", lambda: True)
 
-    def boom(img):
+    def boom(img, faces=None):
         raise RuntimeError("нет сети")
 
     monkeypatch.setattr(photo, "background_mask", boom)
@@ -194,15 +194,15 @@ def test_background_removal_unavailable(client, image, monkeypatch):
     assert cfg["features"]["background_removal"] is False
 
 
-def test_config_does_not_import_heavy_rembg():
-    """Регрессия: /api/config раньше импортировал rembg, и на Windows первый запрос шёл >30 с."""
+def test_config_does_not_import_heavy_onnxruntime():
+    """Регрессия: /api/config раньше импортировал тяжёлую библиотеку, и на Windows первый запрос шёл >30 с."""
     import subprocess
     import sys
 
     code = (
         "import sys; from fastapi.testclient import TestClient; from app.main import app; "
         "c = TestClient(app); assert c.get('/api/config').status_code == 200; "
-        "print('rembg' in sys.modules)"
+        "print('onnxruntime' in sys.modules or 'rembg' in sys.modules)"
     )
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr
@@ -223,7 +223,54 @@ def test_auto_tone(client, image):
     assert -0.5 <= t["brightness"] <= 0.5 and -0.5 <= t["contrast"] <= 1.0
     assert t["score_after"] >= t["score_before"]  # хуже, чем без коррекций, не бывает
     assert t["candidates"] == 6
-    assert 1000 <= t["best_lines"] <= 3000
+    assert 1000 <= t["best_lines"] <= 5000
     bad = client.post(f"/api/images/{image['id']}/auto-tone", json={"diameter_cm": 5})
     assert bad.status_code == 422
     assert client.post("/api/images/000000000000/auto-tone", json={}).status_code == 404
+
+
+# TC-API-28
+def test_mask_brush_edit_and_reset(client, image, monkeypatch):
+    """Маска, поправленная кистью, сохраняется и идёт в расчёт; правки можно отменить."""
+    monkeypatch.setattr(photo, "background_removal_available", lambda: True)
+    auto = Image.new("L", (512, 512), 0)
+    auto.paste(255, (156, 100, 356, 512))  # «человек» — прямоугольник по центру
+    monkeypatch.setattr(photo, "background_mask", lambda img, faces=None: auto)
+    iid = image["id"]
+    assert client.put(f"/api/images/{iid}/mask.png", content=b"").status_code == 400
+    assert client.put(f"/api/images/{iid}/mask.png", content=b"not png").status_code == 400
+    client.post(f"/api/images/{iid}/mask")
+    st = _wait_mask(client, iid, timeout=10)
+    assert st["status"] == "ready" and st["edited"] is False
+
+    edited = auto.copy()
+    edited.paste(0, (156, 100, 356, 250))  # стёрли верх кистью
+    buf = io.BytesIO()
+    edited.convert("RGBA").resize((256, 256)).save(buf, "PNG")  # canvas может прислать другой размер и RGBA
+    r = client.put(f"/api/images/{iid}/mask.png", content=buf.getvalue(), headers={"Content-Type": "image/png"})
+    assert r.status_code == 200 and r.json()["edited"] is True
+    got = np.asarray(Image.open(io.BytesIO(client.get(f"/api/images/{iid}/mask.png").content)))
+    assert got.shape == (512, 512) and got[180, 256] < 50 and got[400, 256] > 200
+    assert client.get(f"/api/images/{iid}/mask.png").headers["cache-control"] == "no-cache"
+
+    # правка влияет на то, что считает алгоритм: стёртая область стала белой
+    prep = {"remove_background": True}
+    px = np.asarray(Image.open(io.BytesIO(client.get(f"/api/images/{iid}/prepared.png", params=prep).content)))
+    assert px[int(180 / 512 * 400), 200] == 255
+
+    r = client.delete(f"/api/images/{iid}/mask/edits")
+    assert r.status_code == 200 and r.json()["edited"] is False
+    got = np.asarray(Image.open(io.BytesIO(client.get(f"/api/images/{iid}/mask.png").content)))
+    assert got[180, 256] > 200
+    assert client.put("/api/images/000000000000/mask.png", content=buf.getvalue()).status_code == 404
+
+
+def test_legacy_mask_is_recomputed(client, image, monkeypatch):
+    """Маски старой версии (без чистки) не используются — считаются заново."""
+    from app import storage
+
+    storage.save_mask(image["id"], photo.png_bytes(Image.new("L", (512, 512), 255)))
+    with storage._connect() as conn:
+        conn.execute("UPDATE images SET mask_source = NULL WHERE id = ?", (image["id"],))
+    assert client.get(f"/api/images/{image['id']}").json()["has_mask"] is False
+    assert client.get(f"/api/images/{image['id']}/mask.png").status_code == 409

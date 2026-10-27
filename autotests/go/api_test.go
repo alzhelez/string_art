@@ -341,7 +341,7 @@ func TestSimilarity_TC_API_26(t *testing.T) {
 	res, data := do(t, http.MethodGet, "/api/projects/"+p.ID+"/similarity", nil, "")
 	expectStatus(t, res, data, 200)
 	s := decode[sim](t, data)
-	if s.BestLines != p.LineCount || len(s.Curve) != 41 || s.BestScore <= 0.5 {
+	if s.BestLines != p.LineCount || len(s.Curve) != 41 || s.BestScore <= 0.2 {
 		t.Fatalf("сходство: best=%d line_count=%d points=%d score=%v", s.BestLines, p.LineCount, len(s.Curve), s.BestScore)
 	}
 	for _, pt := range s.Curve {

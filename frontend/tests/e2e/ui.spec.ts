@@ -20,11 +20,11 @@ test.describe("Новый портрет", () => {
     await page.getByRole("radio", { name: "70" }).click();
     await page.getByRole("button", { name: "Сделать портрет" }).click();
 
-    await expect(page).toHaveURL(/\/projects\/[0-9a-f]{12}$/);
+    await expect(page).toHaveURL(/\/project\?id=[0-9a-f]{12}$/);
     await expect(page.getByLabel("Название портрета")).toHaveValue(name);
     await expect(page.getByRole("radio", { name: "70" })).toHaveAttribute("aria-checked", "true");
     // Число линий — рекомендация по максимальному сходству с фото
-    const id = page.url().match(/projects\/([0-9a-f]{12})/)![1];
+    const id = page.url().match(/[?&]id=([0-9a-f]{12})/)![1];
     const sim = await (await page.request.get(`/api/projects/${id}/similarity`)).json();
     await expect(page.getByTestId("lines-value")).toHaveText(numRe(sim.best_lines));
     await expect(page.getByTestId("stat-steps")).toHaveText(numRe(sim.best_lines));
@@ -32,14 +32,14 @@ test.describe("Новый портрет", () => {
     await expect(page.getByTestId("stat-spool")).toHaveText(/\d.* м$/);
     await expect(page.getByTestId("board")).toHaveAttribute("data-lines", String(sim.best_lines));
     await expect(page.getByTestId("recommendation")).toContainText("больше всего похожа на фото");
-    await expect(page.getByTestId("similarity-current")).toHaveText(/Сходство с фото: \d+,\d\s%/);
+    await expect(page.getByTestId("similarity-current")).toHaveText(/Сходство с фото: 100,0\s% от лучшего/);
   });
 });
 
 test.describe("Студия", () => {
   test("UI-03 ползунок и диаметр меняют расчёт сразу и сохраняются", async ({ page, request }) => {
     const p = await createProject(request, { name: uniqueName("Студия") });
-    await page.goto(`/projects/${p.id}`);
+    await page.goto(`/project?id=${p.id}`);
     const spoolBefore = await page.getByTestId("stat-total").innerText();
 
     await page.locator("#lines").fill("4000");
@@ -58,7 +58,7 @@ test.describe("Студия", () => {
 
   test("UI-04 скачивание PDF-инструкции", async ({ page, request }) => {
     const p = await createProject(request, { name: "Бабушка PDF" });
-    await page.goto(`/projects/${p.id}`);
+    await page.goto(`/project?id=${p.id}`);
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       page.getByRole("button", { name: "Скачать инструкцию PDF" }).click(),
@@ -71,15 +71,26 @@ test.describe("Студия", () => {
   test("UI-05 удаление портрета", async ({ page, request }) => {
     const name = uniqueName("Удалить");
     const p = await createProject(request, { name });
-    await page.goto(`/projects/${p.id}`);
+    await page.goto(`/project?id=${p.id}`);
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Удалить портрет" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByText(name)).toHaveCount(0);
   });
 
+  test("UI-18 старые адреса /projects/<id> ведут на новые", async ({ page, request }) => {
+    const p = await createProject(request, { name: uniqueName("Адрес") });
+    await page.goto(`/projects/${p.id}/weave`);
+    await expect(page).toHaveURL(new RegExp(`/project/weave\\?id=${p.id}$`));
+    await expect(page.getByTestId("step-counter")).toBeVisible();
+    await page.goto(`/projects/${p.id}`);
+    await expect(page).toHaveURL(new RegExp(`/project\\?id=${p.id}$`));
+  });
+
   test("UI-06 несуществующий проект", async ({ page }) => {
-    await page.goto("/projects/000000000000");
+    await page.goto("/project?id=000000000000");
+    await expect(page.locator(".form-error")).toHaveText("Проект не найден.");
+    await page.goto("/project");
     await expect(page.locator(".form-error")).toHaveText("Проект не найден.");
   });
 });
@@ -87,7 +98,7 @@ test.describe("Студия", () => {
 test.describe("Плетение", () => {
   test("UI-07 автоперелистывание, скорость и сохранение шага после перезагрузки", async ({ page, request }) => {
     const p = await createProject(request, { name: uniqueName("Плетение"), lines: 2000 });
-    await page.goto(`/projects/${p.id}/weave`);
+    await page.goto(`/project/weave?id=${p.id}`);
     await expect(page.getByTestId("step-counter")).toHaveText(/Шаг 1 из 2\s000/);
     await expect(page.getByTestId("speed")).toHaveText("2,0 с на шаг");
 
@@ -128,7 +139,7 @@ test.describe("Плетение", () => {
       };
     });
     const p = await createProject(request);
-    await page.goto(`/projects/${p.id}/weave`);
+    await page.goto(`/project/weave?id=${p.id}`);
     await page.getByRole("radio", { name: "Голос" }).click();
     await expect(page.getByLabel("Что озвучивать")).toBeVisible();
     await page.getByRole("button", { name: "Вперёд" }).click();
@@ -150,7 +161,7 @@ test.describe("Плетение", () => {
 });
 
 test.describe("Редактор фото", () => {
-  const projectIdFromUrl = (url: string) => url.match(/projects\/([0-9a-f]{12})/)![1];
+  const projectIdFromUrl = (url: string) => url.match(/[?&]id=([0-9a-f]{12})/)![1];
 
   test("UI-10 кадр, яркость и «Выделить лицо» попадают в расчёт", async ({ page, request, isMobile }) => {
     await page.goto("/");
@@ -180,13 +191,14 @@ test.describe("Редактор фото", () => {
 
     await page.getByLabel("Название").fill(uniqueName("Лицо"));
     await page.getByRole("button", { name: "Сделать портрет" }).click();
-    await expect(page).toHaveURL(/\/projects\/[0-9a-f]{12}$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/project\?id=[0-9a-f]{12}$/, { timeout: 30_000 });
 
     const p: ApiProject = await (await request.get(`/api/projects/${projectIdFromUrl(page.url())}`)).json();
     expect(p.prep.face_focus).toBe(true);
     expect(p.prep.brightness).toBeCloseTo(0.1, 5);
     expect(p.prep.zoom).toBeGreaterThan(1.5);
-    expect(p.prep.center_x).toBeLessThan(0.4365); // сдвинули фото вправо → центр кадра левее лица
+    const img = await (await request.get(`/api/images/${p.image_id}`)).json();
+    expect(p.prep.center_x).toBeLessThan(img.face_prep.center_x); // сдвинули фото вправо → центр кадра левее лица
   });
 
   test("UI-11 «Убрать фон»", async ({ page, request }) => {
@@ -198,21 +210,61 @@ test.describe("Редактор фото", () => {
     await page.getByLabel("Убрать фон").check();
     await expect(page.getByText("Фон станет белым")).toBeVisible({ timeout: 200_000 });
     await page.getByRole("button", { name: "Сделать портрет" }).click();
-    await expect(page).toHaveURL(/\/projects\/[0-9a-f]{12}$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/project\?id=[0-9a-f]{12}$/, { timeout: 30_000 });
     const p: ApiProject = await (await request.get(`/api/projects/${projectIdFromUrl(page.url())}`)).json();
     expect(p.prep.remove_background).toBe(true);
+  });
+
+  test("UI-17 кисть: стереть лишнее, отменить, правка уходит в расчёт", async ({ page, request, isMobile }) => {
+    const features = (await (await request.get("/api/config")).json()).features;
+    test.skip(!features.background_removal, "на сервере не установлен rembg");
+    test.skip(isMobile, "мазок мышью — на десктопе; тач-жесты проверены вручную");
+    test.setTimeout(240_000);
+    await page.goto("/");
+    await page.getByTestId("file-input").setInputFiles(FACE_JPG);
+    await page.getByLabel("Убрать фон").check();
+    const panel = page.getByTestId("brush-panel");
+    await expect(panel).toBeVisible({ timeout: 200_000 });
+    await expect(panel.getByRole("button", { name: "Отменить" })).toBeDisabled();
+    await panel.getByRole("radio", { name: "Стереть" }).click();
+    await expect(page.getByTestId("photo-viewport")).toHaveAttribute("data-tool", "erase");
+
+    const viewport = page.getByTestId("photo-viewport");
+    await viewport.scrollIntoViewIfNeeded();
+    const box = (await viewport.boundingBox())!;
+    const stroke = async (y: number) => {
+      await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * y);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * y, { steps: 8 });
+      await page.mouse.up();
+    };
+    const put = page.waitForResponse((r) => r.url().includes("/mask.png") && r.request().method() === "PUT");
+    await stroke(0.5);
+    await stroke(0.6);
+    expect((await put).status()).toBe(200);
+    await panel.getByRole("button", { name: "Отменить" }).click(); // второй мазок отменён
+    await expect(panel.getByRole("button", { name: "Отменить" })).toBeEnabled();
+
+    await page.getByRole("button", { name: "Сделать портрет" }).click();
+    await expect(page).toHaveURL(/\/project\?id=[0-9a-f]{12}$/, { timeout: 60_000 });
+    const p: ApiProject = await (await request.get(`/api/projects/${projectIdFromUrl(page.url())}`)).json();
+    expect(p.prep.remove_background).toBe(true);
+    expect((await (await request.get(`/api/images/${p.image_id}/mask`)).json()).edited).toBe(true);
+    // как правка влияет на пиксели кадра, проверяет pytest (TC-API-28); здесь — что маска отдаётся
+    const mask = await request.get(`/api/images/${p.image_id}/mask.png`);
+    expect(mask.ok()).toBeTruthy();
   });
 
   test("UI-12 правка фото готового портрета пересчитывает схему и сбрасывает прогресс", async ({ page, request }) => {
     const p = await createProject(request, { name: uniqueName("Правка"), file: FACE_JPG });
     await request.patch(`/api/projects/${p.id}`, { data: { current_step: 321 } });
-    await page.goto(`/projects/${p.id}`);
+    await page.goto(`/project?id=${p.id}`);
     await page.getByTestId("edit-photo").click();
-    await expect(page).toHaveURL(new RegExp(`/projects/${p.id}/photo$`));
+    await expect(page).toHaveURL(new RegExp(`/project/photo\\?id=${p.id}$`));
     await expect(page.getByTestId("progress-warning")).toContainText("321");
     await page.getByRole("slider", { name: "Масштаб" }).fill("2");
     await page.getByRole("button", { name: "Пересчитать портрет" }).click();
-    await expect(page).toHaveURL(new RegExp(`/projects/${p.id}$`), { timeout: 30_000 });
+    await expect(page).toHaveURL(new RegExp(`/project\\?id=${p.id}$`), { timeout: 30_000 });
     await expect(page.getByTestId("start-weaving")).toHaveText("Начать плетение");
     const after: ApiProject = await (await request.get(`/api/projects/${p.id}`)).json();
     expect(after.prep.zoom).toBe(2);
@@ -222,11 +274,11 @@ test.describe("Редактор фото", () => {
 
 test.describe("Сходство, автонастройка, медиа, тема", () => {
   test("UI-13 рекомендация по сходству и кнопка «Поставить»", async ({ page, request }) => {
-    const p = await createProject(request, { name: uniqueName("Сходство"), lines: 4500 });
+    const p = await createProject(request, { name: uniqueName("Сходство"), lines: 1000 });
     const sim = await (await request.get(`/api/projects/${p.id}/similarity`)).json();
-    test.skip(sim.best_lines === 4500, "рекомендация совпала с выставленным значением");
-    await page.goto(`/projects/${p.id}`);
-    await expect(page.getByTestId("lines-value")).toHaveText(numRe(4500));
+    test.skip(sim.best_lines === 1000, "рекомендация совпала с выставленным значением");
+    await page.goto(`/project?id=${p.id}`);
+    await expect(page.getByTestId("lines-value")).toHaveText(numRe(1000));
     const set = page.getByRole("button", { name: /^Поставить / });
     await expect(set).toBeVisible();
     await set.click();
@@ -253,7 +305,7 @@ test.describe("Сходство, автонастройка, медиа, тем�
 
   test("UI-15 своя музыка во время плетения и пауза вместе с плетением", async ({ page, request }) => {
     const p = await createProject(request, { name: uniqueName("Музыка") });
-    await page.goto(`/projects/${p.id}/weave`);
+    await page.goto(`/project/weave?id=${p.id}`);
     const panel = page.getByTestId("media-panel");
     await panel.getByTestId("media-file-input").setInputFiles({ name: "Тишина.wav", mimeType: "audio/wav", buffer: silentWav(3) });
     const audio = panel.getByTestId("media-element");

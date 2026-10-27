@@ -5,13 +5,14 @@ from __future__ import annotations
 import io
 import os
 import re
+from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, Response, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field
@@ -244,13 +245,25 @@ def _compute_mask(image_id: str) -> None:
     image = storage.get_image(image_id, with_blobs=True)
     if image is None or image.get("mask"):
         return
-    mask = photo.background_mask(Image.open(io.BytesIO(image["original"])))
+    faces = [photo.Box(**f) for f in image["faces"]]
+    mask = photo.background_mask(Image.open(io.BytesIO(image["original"])), faces)
     storage.save_mask(image_id, photo.png_bytes(mask))
 
 
 def _mask_status(image: dict[str, Any]) -> dict[str, Any]:
+    status = _mask_status_raw(image)
+    status["progress"] = photo.engine.progress
+    return status
+
+
+def _mask_status_raw(image: dict[str, Any]) -> dict[str, Any]:
     if image.get("mask") or image.get("has_mask"):
-        return {"status": "ready", "model": photo.engine.state, "message": None}
+        return {
+            "status": "ready",
+            "model": photo.engine.state,
+            "message": None,
+            "edited": image.get("mask_source") == "edited",
+        }
     if not photo.background_removal_available():
         raise HTTPException(503, _NOT_INSTALLED)
     job = photo.engine.job(image["id"])
@@ -301,14 +314,26 @@ def _generate(image: dict[str, Any], prep: photo.Prep) -> tuple[list[int], Image
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
 
-@app.get("/", include_in_schema=False)
+def static_dir() -> Path | None:
+    """Папка с собранным фронтендом (десктопная версия): бэкенд сам раздаёт приложение."""
+    path = os.environ.get("STRINGART_STATIC_DIR")
+    return Path(path) if path and (Path(path) / "index.html").is_file() else None
+
+
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def root() -> Response:
     """Это API, а не сайт: открывший http://localhost:8000 в браузере попадёт на приложение."""
+    web = static_dir()
+    if web:
+        return FileResponse(web / "index.html", headers={"Cache-Control": "no-cache"})
     return RedirectResponse(FRONTEND_URL, status_code=307)
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> Response:
+    web = static_dir()
+    if web and (web / "favicon.ico").is_file():
+        return FileResponse(web / "favicon.ico")
     return Response(status_code=204)
 
 
@@ -450,6 +475,8 @@ class MaskStatus(BaseModel):
     status: str = Field(description="idle — не запрашивали, processing — считается, ready — готова, error — ошибка")
     model: str = Field(description="Состояние модели: idle, loading (скачивается/грузится), ready, error")
     message: str | None = None
+    edited: bool = Field(False, description="Маска поправлена вручную кистью")
+    progress: float | None = Field(None, description="Доля скачанной модели (0..1), пока она качается")
 
 
 @app.post("/api/images/{image_id}/mask", response_model=MaskStatus)
@@ -476,7 +503,44 @@ def image_mask(image_id: str) -> Response:
     image = _image_or_404(image_id, with_blobs=True)
     if not image.get("mask"):
         raise HTTPException(409, "Маска ещё не готова: сначала POST /api/images/{id}/mask и дождитесь status=ready")
-    return Response(image["mask"], media_type="image/png", headers={"Cache-Control": "max-age=86400"})
+    return Response(image["mask"], media_type="image/png", headers={"Cache-Control": "no-cache"})
+
+
+MAX_MASK_BYTES = 8 * 1024 * 1024
+
+
+@app.put("/api/images/{image_id}/mask.png", response_model=MaskStatus)
+async def put_mask(image_id: str, request: Request) -> dict[str, Any]:
+    """Маска, поправленная кистью в редакторе (PNG, белое — человек). Приводится к размеру фото."""
+    image = _image_or_404(image_id)
+    data = await request.body()
+    if not data or len(data) > MAX_MASK_BYTES:
+        raise HTTPException(413 if data else 400, "Маска пустая или слишком большая")
+    try:
+        mask = Image.open(io.BytesIO(data))
+        mask.load()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(400, "Маска должна быть PNG-картинкой") from exc
+    mask = mask.convert("L")  # canvas отдаёт RGBA с непрозрачной альфой — берём яркость
+    if mask.size != (image["width"], image["height"]):
+        mask = mask.resize((image["width"], image["height"]), Image.Resampling.BILINEAR)
+    storage.save_mask(image_id, photo.png_bytes(mask), edited=True)
+    return _mask_status(_image_or_404(image_id))
+
+
+@app.delete("/api/images/{image_id}/mask/edits", response_model=MaskStatus)
+def reset_mask_edits(image_id: str, response: Response) -> dict[str, Any]:
+    """Отменить правки кистью — вернуть автоматическую маску."""
+    _image_or_404(image_id)
+    storage.reset_mask(image_id)
+    image = _image_or_404(image_id)
+    status = _mask_status(image)
+    if status["status"] in ("idle", "error"):
+        photo.engine.submit(image_id, lambda: _compute_mask(image_id))
+        status = _mask_status(_image_or_404(image_id))
+    if status["status"] != "ready":
+        response.status_code = 202
+    return status
 
 
 @app.post("/api/images/{image_id}/auto-tone", response_model=AutoToneOut)
@@ -620,3 +684,23 @@ def geometry(diameter_cm: Annotated[float, Query(ge=config.MIN_DIAMETER_CM, le=c
         "nail_spacing_mm": round(arc_spacing(diameter_cm * 10), 2),
         "recommended_lines": recommended_lines(diameter_cm),
     }
+
+
+# --- Десктопная версия: статические файлы приложения --------------------------------
+@app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+def static_files(path: str) -> Response:
+    """/project → project.html, /_next/… → файлы сборки. Регистрируется последним — после API."""
+    web = static_dir()
+    if web is None or path.startswith("api/"):
+        raise HTTPException(404, "Не найдено")
+    root_dir = web.resolve()
+    for candidate in (path, f"{path}.html", f"{path}/index.html"):
+        file = (root_dir / candidate).resolve()
+        if file.is_file() and file.is_relative_to(root_dir):
+            immutable = path.startswith("_next/static/")
+            cache = "public, max-age=31536000, immutable" if immutable else "no-cache"
+            return FileResponse(file, headers={"Cache-Control": cache})
+    not_found = root_dir / "404.html"
+    if not_found.is_file():
+        return FileResponse(not_found, status_code=404)
+    raise HTTPException(404, "Не найдено")

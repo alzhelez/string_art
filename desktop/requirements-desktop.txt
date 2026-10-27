@@ -1,0 +1,5 @@
+# Сборка десктопной версии (Windows .exe). Пути -r — относительно этого файла.
+-r ../backend/requirements.txt
+onnxruntime>=1.17
+pywebview>=5.3
+pyinstaller>=6.10
