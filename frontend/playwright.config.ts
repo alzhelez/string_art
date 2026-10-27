@@ -16,7 +16,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }], ["junit", { outputFile: "test-results/junit.xml" }]] : "list",
+  reporter: process.env.CI ? [["list"], ["github"], ["html", { open: "never" }], ["junit", { outputFile: "test-results/junit.xml" }]] : "list",
   use: {
     baseURL: `http://127.0.0.1:${FRONT_PORT}`,
     locale: "ru-RU",
