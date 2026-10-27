@@ -100,3 +100,53 @@ def test_pdf_rejects_bad_steps(long_seq):
         build_instructions_pdf("x", long_seq, 0, 50)
     with pytest.raises(ValueError):
         build_instructions_pdf("x", long_seq, 451, 50)
+
+
+# --- шаблон разметки 1:1 (TC-API-31) ----------------------------------------
+def test_template_layout_fits_circle():
+    from app.template import CONTENT_PAD_MM, OVERLAP_MM, layout
+
+    for d in (20, 30, 50, 70, 100, 150):
+        lay = layout(d)
+        covered_w = lay.cols * lay.step_x + OVERLAP_MM
+        covered_h = lay.rows * lay.step_y + OVERLAP_MM
+        need = d * 10 + 2 * CONTENT_PAD_MM
+        assert covered_w >= need and covered_h >= need
+        # меньше листов, чем «в лоб» по большей стороне — значит ориентация подобрана
+        assert lay.sheets <= ((need // 180) + 1) * ((need // 180) + 1)
+    assert layout(50).sheets == 6
+    assert layout(30).sheets == 4
+    assert layout(50, "A3").sheets < layout(50).sheets
+
+
+def test_template_pdf_has_every_nail_in_true_scale():
+    import io
+
+    from pypdf import PdfReader
+
+    from app.geometry import nail_label
+    from app.template import build_template_pdf, layout
+
+    reader = PdfReader(io.BytesIO(build_template_pdf(50, "Тест")))
+    lay = layout(50)
+    assert len(reader.pages) == 1 + lay.sheets
+    cover = reader.pages[0].extract_text()
+    assert "Шаблон разметки" in cover and "10 см" in cover and "100 %" in cover
+    text = " ".join(p.extract_text() for p in reader.pages[1:])
+    for i in range(240):
+        assert nail_label(i) in text
+    # листы — настоящий A4 (в точках), без масштабирования
+    for p in reader.pages[1:]:
+        w, h = sorted((float(p.mediabox.width), float(p.mediabox.height)))
+        assert abs(w - 595.28) < 0.5 and abs(h - 841.89) < 0.5
+    assert "Лист 6 из 6" in reader.pages[-1].extract_text()
+
+
+def test_template_api(client, project):
+    r = client.get(f"/api/projects/{project['id']}/template.pdf")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
+    assert "filename*=UTF-8''" in r.headers["content-disposition"]
+    assert client.get(f"/api/projects/{project['id']}/template.pdf", params={"paper": "A5"}).status_code == 422
+    assert client.get("/api/template.pdf", params={"diameter_cm": 40, "paper": "A3"}).status_code == 200
+    assert client.get("/api/template.pdf", params={"diameter_cm": 10}).status_code == 422
+    assert client.get("/api/projects/000000000000/template.pdf").status_code == 404

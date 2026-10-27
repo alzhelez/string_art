@@ -6,6 +6,7 @@ import { WeavePlayer } from "@/components/WeavePlayer";
 import { useDebouncedPatch } from "@/hooks/useDebouncedPatch";
 import { routes, useProjectId } from "@/lib/routes";
 import { api, ApiError, type Project } from "@/lib/api";
+import { threadStats } from "@/lib/thread";
 
 export default function WeavePage() {
   return (
@@ -60,6 +61,9 @@ function WeavePageInner() {
         initialSpeedSec={project.speed_sec}
         title={project.name}
         backHref={routes.project(project.id)}
+        projectId={project.id}
+        activity={project.activity}
+        spoolM={project.own_spool_m ?? threadStats(project.sequence, project.line_count, project.diameter_cm).spool_m}
         onStepChange={(s) => {
           setSaveError("");
           schedule({ current_step: s });

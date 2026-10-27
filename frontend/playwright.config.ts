@@ -28,7 +28,7 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop-chrome", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile-chrome", use: { ...devices["Pixel 7"] }, testMatch: /ui\.spec\.ts/ },
+    { name: "mobile-chrome", use: { ...devices["Pixel 7"] }, testMatch: /(ui|extras)\.spec\.ts/ },
   ],
   webServer: [
     {

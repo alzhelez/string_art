@@ -50,7 +50,27 @@ export interface ProjectSummary {
   speed_sec: number;
   image_id: string | null;
   prep: Partial<Prep>;
+  /** Длина своей катушки, м (для плана смены катушек); null — стандартная из расчёта. */
+  own_spool_m: number | null;
+  activity: Activity;
   stats: ThreadStats;
+}
+
+export interface ActivityDay {
+  date: string;
+  sec: number;
+  steps: number;
+}
+
+export interface Activity {
+  total_sec: number;
+  total_steps: number;
+  days: ActivityDay[];
+}
+
+export interface AppInfo {
+  version: string;
+  desktop: boolean;
 }
 
 export interface Project extends ProjectSummary {
@@ -59,7 +79,7 @@ export interface Project extends ProjectSummary {
 }
 
 export type ProjectPatch = Partial<
-  Pick<Project, "name" | "diameter_cm" | "line_count" | "current_step" | "speed_sec">
+  Pick<Project, "name" | "diameter_cm" | "line_count" | "current_step" | "speed_sec" | "own_spool_m">
 >;
 
 export class ApiError extends Error {
@@ -115,6 +135,14 @@ export const api = {
     }),
   remove: (id: string) => request<void>(`/api/projects/${id}`, { method: "DELETE" }),
   features: async (): Promise<Features> => (await request<{ features: Features }>("/api/config")).features,
+  appInfo: async (): Promise<AppInfo | null> => (await request<{ app?: AppInfo }>("/api/config")).app ?? null,
+  activity: (id: string, body: { date: string; seconds: number; steps: number }, keepalive = false) =>
+    request<Activity>(`/api/projects/${id}/activity`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive,
+    }),
   uploadImage: (file: Blob, filename: string) => {
     const form = new FormData();
     form.append("file", file, filename);
@@ -149,4 +177,5 @@ export const api = {
     `/api/projects/${id}/preview.png?size=${size}${lines ? `&lines=${lines}` : ""}`,
   sourceUrl: (id: string) => `/api/projects/${id}/source.png`,
   pdfUrl: (id: string) => `/api/projects/${id}/instructions.pdf`,
+  templateUrl: (id: string, paper: "A4" | "A3" = "A4") => `/api/projects/${id}/template.pdf?paper=${paper}`,
 };

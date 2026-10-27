@@ -20,3 +20,4 @@ frontend/CLAUDE.md
 frontend/out/
 /dist/
 /build/
+backend/app/_version.txt

@@ -263,3 +263,39 @@ def test_desktop_static_files(client, tmp_path, monkeypatch):
     monkeypatch.delenv("STRINGART_STATIC_DIR")
     assert client.get("/", follow_redirects=False).status_code == 307
     assert client.get("/project").status_code == 404
+
+
+# TC-API-30
+def test_activity_log_and_own_spool(client, project):
+    pid = project["id"]
+    assert project["activity"] == {"total_sec": 0, "total_steps": 0, "days": []}
+    assert project["own_spool_m"] is None
+    r = client.post(f"/api/projects/{pid}/activity", json={"date": "2026-10-27", "seconds": 30, "steps": 12})
+    assert r.status_code == 200
+    client.post(f"/api/projects/{pid}/activity", json={"date": "2026-10-27", "seconds": 29.5, "steps": 10})
+    act = client.post(f"/api/projects/{pid}/activity", json={"date": "2026-10-28", "seconds": 60, "steps": 30}).json()
+    assert act == {
+        "total_sec": 119.5,
+        "total_steps": 52,
+        "days": [{"date": "2026-10-27", "sec": 59.5, "steps": 22}, {"date": "2026-10-28", "sec": 60.0, "steps": 30}],
+    }
+    assert client.get(f"/api/projects/{pid}").json()["activity"]["total_steps"] == 52
+    for bad in ({"date": "27.10.2026", "seconds": 1, "steps": 1}, {"date": "2026-10-27", "seconds": 601, "steps": 1},
+                {"date": "2026-10-27", "seconds": 1, "steps": -1}, {"date": "2026-10-27", "seconds": 1, "steps": 1, "x": 1}):
+        assert client.post(f"/api/projects/{pid}/activity", json=bad).status_code == 422
+    assert client.post("/api/projects/000000000000/activity", json={"date": "2026-10-27", "seconds": 1, "steps": 1}).status_code == 404
+
+    assert client.patch(f"/api/projects/{pid}", json={"own_spool_m": 300}).json()["own_spool_m"] == 300
+    assert client.patch(f"/api/projects/{pid}", json={"speed_sec": 3}).json()["own_spool_m"] == 300  # не сбрасывается
+    assert client.patch(f"/api/projects/{pid}", json={"own_spool_m": None}).json()["own_spool_m"] is None
+    assert client.patch(f"/api/projects/{pid}", json={"own_spool_m": 5}).status_code == 422
+
+
+def test_config_reports_app_version(client, monkeypatch, tmp_path):
+    from app import config
+
+    cfg = client.get("/api/config").json()
+    assert cfg["app"] == {"version": "dev", "desktop": False}
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+    (tmp_path / "_version.txt").write_text("1.4.7\n", encoding="utf-8")
+    assert client.get("/api/config").json()["app"]["version"] == "1.4.7"

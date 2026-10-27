@@ -2054,3 +2054,356 @@ kbd {
   margin: 0;
   font-weight: 600;
 }
+
+/* --- время, катушка, перерывы (плетение) --------------------------------------- */
+.weave-eta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.spool-alert {
+  margin: -0.4rem 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, #f2a93b 18%, var(--surface));
+  border: 1px solid color-mix(in srgb, #f2a93b 45%, transparent);
+  font-size: 0.92rem;
+}
+
+.spool-alert.is-now {
+  background: color-mix(in srgb, #f2a93b 32%, var(--surface));
+  font-weight: 500;
+}
+
+.break-toast {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+  width: min(440px, calc(100vw - 32px));
+  padding: 1rem 1.15rem;
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  animation: toast-in 0.3s var(--ease);
+}
+
+.break-toast strong {
+  font: 600 1.05rem var(--display);
+}
+
+.break-toast span {
+  color: var(--text-2);
+}
+
+.break-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+
+.control-panel,
+.time-panel {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.control-block {
+  display: grid;
+  gap: 0.5rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.control-block h3,
+.share-block h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font: 600 1rem var(--text-font);
+}
+
+.heard,
+.key-test {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: 0.93rem;
+}
+
+.time-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.time-stats > div {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.time-stats dt {
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+
+.time-stats dd {
+  margin: 0;
+  font: 600 1.15rem var(--display);
+}
+
+.time-stats small {
+  color: var(--text-2);
+  font-size: 0.8rem;
+}
+
+.days-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 110px;
+  margin: 0;
+  padding: 0.5rem 0.25rem 0;
+}
+
+.day {
+  flex: 1;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+  justify-items: center;
+  gap: 0.3rem;
+}
+
+.day-bar {
+  align-self: end;
+  width: min(100%, 34px);
+  border-radius: 6px 6px 3px 3px;
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+.day-label {
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+/* --- студия: виды сцены ---------------------------------------------------- */
+.stage-view {
+  display: grid;
+  gap: 1rem;
+}
+
+.stage-modes {
+  justify-self: center;
+}
+
+.compare {
+  position: relative;
+  user-select: none;
+}
+
+.compare-photo {
+  position: absolute;
+  inset: 2%;
+  width: 96%;
+  height: 96%;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.compare-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+.compare-tag {
+  position: absolute;
+  top: 0;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--glass);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.compare-tag.left {
+  left: 0;
+}
+
+.compare-tag.right {
+  right: 0;
+}
+
+.compare-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+}
+
+.compare-range:focus-visible + * {
+  outline: none;
+}
+
+.wall {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.wall-scene {
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+  padding: 2rem 1rem;
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(to bottom, transparent 82%, rgba(0, 0, 0, 0.08) 82.3%, transparent 83%),
+    linear-gradient(160deg, #e9e6df 0%, #dcd8cf 100%);
+  overflow: hidden;
+}
+
+:root[data-theme="dark"] .wall-scene {
+  background:
+    linear-gradient(to bottom, transparent 82%, rgba(0, 0, 0, 0.25) 82.3%, transparent 83%),
+    linear-gradient(160deg, #3a3d42 0%, #2c2f33 100%);
+}
+
+.wall-art {
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.28));
+}
+
+.wall-distances {
+  justify-self: center;
+}
+
+/* --- студия: катушка и «поделиться» ------------------------------------------ */
+.spool-planner {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.spool-planner input {
+  width: 7rem;
+}
+
+.spool-list {
+  margin: 0;
+  padding-left: 1.3rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.93rem;
+}
+
+.share-panel {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.share-block {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.share-block + .share-block {
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--border);
+}
+
+.share-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.share-result {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+}
+
+.share-result img,
+.share-result video {
+  width: min(100%, 320px);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.video-progress {
+  display: grid;
+  gap: 0.35rem;
+}
+
+/* --- обновление программы -------------------------------------------------- */
+.update-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.9rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--r-lg);
+  background: var(--accent-soft);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.update-notice span {
+  flex: 1;
+  min-width: 220px;
+}
+
+.update-notice svg {
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .weave-eta {
+    order: 5;
+  }
+
+  .wall-scene {
+    min-height: 300px;
+  }
+}

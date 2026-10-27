@@ -274,4 +274,26 @@ class StringArtApiTest < Minitest::Test
     assert_includes(-0.5..0.5, t['brightness'])
     assert_equal '422', post.call(diameter_cm: 5).code
   end
+
+  def test_tc_api_31_template_pdf
+    p = create_project
+    res = Api.get("/api/projects/#{p['id']}/template.pdf")
+    assert_equal '200', res.code
+    assert_equal 'application/pdf', res['Content-Type']
+    assert res.body.start_with?('%PDF')
+    assert_equal '422', Api.get('/api/template.pdf?diameter_cm=10').code
+  end
+
+  def test_tc_api_30_activity_and_spool
+    p = create_project
+    post = lambda do |body|
+      Api.http { |h| h.post("/api/projects/#{p['id']}/activity", JSON.generate(body), 'Content-Type' => 'application/json') }
+    end
+    post.call(date: '2026-10-27', seconds: 20, steps: 5)
+    act = Api.json(post.call(date: '2026-10-28', seconds: 40, steps: 10))
+    assert_equal 60.0, act['total_sec']
+    assert_equal 15, act['total_steps']
+    assert_equal %w[2026-10-27 2026-10-28], act['days'].map { |d| d['date'] }
+    assert_equal 300.0, Api.json(Api.patch("/api/projects/#{p['id']}", own_spool_m: 300))['own_spool_m']
+  end
 end

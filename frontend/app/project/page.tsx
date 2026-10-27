@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Board } from "@/components/Board";
+import { SharePanel } from "@/components/studio/SharePanel";
+import { SpoolPlanner } from "@/components/studio/SpoolPlanner";
+import { StageView } from "@/components/studio/StageView";
 import { DiameterPicker } from "@/components/DiameterPicker";
 import { SimilarityChart } from "@/components/SimilarityChart";
 import { Section, Slider } from "@/components/ui/Controls";
@@ -123,7 +125,13 @@ function StudioPageInner() {
 
       <div className="studio-grid">
         <div className="stage">
-          <Board label={`Портрет «${name}», ${lines} линий`} sequence={project.sequence} lines={lines} diameterCm={diameter} />
+          <StageView
+            sequence={project.sequence}
+            lines={lines}
+            diameterCm={diameter}
+            name={name}
+            photoUrl={api.sourceUrl(project.id)}
+          />
           <p className="stage-note">
             Превью для чёрной лески 0,2 мм на круге {num(diameter, diameter % 1 ? 1 : 0)} см
           </p>
@@ -226,6 +234,29 @@ function StudioPageInner() {
                 <dd data-testid="stat-spacing">{num(stats.nail_spacing_mm, 2)} мм</dd>
               </div>
             </dl>
+            <SpoolPlanner
+              sequence={project.sequence}
+              lines={lines}
+              diameterCm={diameter}
+              standardSpoolM={stats.spool_m}
+              ownSpoolM={project.own_spool_m}
+              onChange={(m) => {
+                setProject({ ...project, own_spool_m: m });
+                schedule({ own_spool_m: m });
+              }}
+            />
+          </Section>
+
+          <Section title="Распечатать и поделиться">
+            <SharePanel
+              projectId={project.id}
+              name={name}
+              sequence={project.sequence}
+              lines={lines}
+              diameterCm={diameter}
+              threadM={stats.raw_length_m}
+              beforeDownload={flush}
+            />
           </Section>
 
           <Section title="Фото">

@@ -53,6 +53,14 @@ BASE_DIR = Path(__file__).resolve().parent
 FONTS_DIR = BASE_DIR / "assets" / "fonts"
 
 
+def app_version() -> str:
+    """Версия сборки: файл app/_version.txt пишет сборка .exe (GitHub Actions); иначе — «dev»."""
+    try:
+        return (BASE_DIR / "_version.txt").read_text(encoding="utf-8").strip() or "dev"
+    except OSError:
+        return "dev"
+
+
 def db_path() -> Path:
     """Путь к SQLite. Переопределяется переменной STRINGART_DB (нужно тестам)."""
     default = BASE_DIR.parent / "data" / "string_art.db"

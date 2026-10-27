@@ -22,6 +22,7 @@ from .algorithm import build_line_cache, generate_sequence
 from .geometry import arc_spacing, nail_label
 from .image_prep import ImageError, gray_png, load_image, target_map
 from .pdf import build_instructions_pdf
+from .template import build_template_pdf
 from .render import render_png
 from .similarity import auto_tone, best_point, project_similarity, similarity_curve
 from .thread import cumulative_lengths_m, recommended_lines, thread_stats
@@ -91,6 +92,18 @@ class ThreadStatsOut(BaseModel):
     nail_spacing_mm: float
 
 
+class ActivityDay(BaseModel):
+    date: str
+    sec: float
+    steps: int
+
+
+class ActivityOut(BaseModel):
+    total_sec: float
+    total_steps: int
+    days: list[ActivityDay] = Field(description="По дням, последние 60, по возрастанию даты")
+
+
 class ProjectSummary(BaseModel):
     id: str
     name: str
@@ -102,6 +115,8 @@ class ProjectSummary(BaseModel):
     speed_sec: float
     image_id: str | None = Field(None, description="Фото, из которого сделан портрет (для правки кадра)")
     prep: dict[str, Any] = Field(default_factory=dict, description="Параметры подготовки фото")
+    own_spool_m: float | None = Field(None, description="Длина своей катушки, м (если указана)")
+    activity: ActivityOut = Field(description="Сколько времени и шагов плели, по дням")
     stats: ThreadStatsOut
 
 
@@ -117,6 +132,17 @@ class ProjectUpdate(BaseModel):
     line_count: int | None = Field(default=None, ge=config.MIN_LINES, le=config.MAX_LINES)
     current_step: int | None = Field(default=None, ge=1, le=config.MAX_LINES)
     speed_sec: float | None = Field(default=None, ge=config.MIN_SPEED_SEC, le=config.MAX_SPEED_SEC)
+    own_spool_m: float | None = Field(
+        default=None, ge=10, le=100_000, description="Длина своей катушки, м; null — сбросить (взять стандартную)"
+    )
+
+
+class ActivityIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$", description="Местная дата у человека, ГГГГ-ММ-ДД")
+    seconds: float = Field(ge=0, le=600, description="Сколько секунд плели с прошлой отметки")
+    steps: int = Field(ge=0, le=10_000, description="Сколько шагов прошли за это время")
 
 
 class SimilarityPoint(BaseModel):
@@ -174,10 +200,20 @@ class StepsPage(BaseModel):
 
 
 # --- Хелперы ----------------------------------------------------------------
+def _activity(log: dict[str, list]) -> dict[str, Any]:
+    days = [{"date": d, "sec": v[0], "steps": v[1]} for d, v in sorted(log.items())]
+    return {
+        "total_sec": round(sum(d["sec"] for d in days), 1),
+        "total_steps": sum(d["steps"] for d in days),
+        "days": days[-60:],
+    }
+
+
 def _summary(p: dict[str, Any]) -> dict[str, Any]:
     stats = thread_stats(p["sequence"], p["line_count"], p["diameter_cm"]).to_dict()
     out = {k: v for k, v in p.items() if k != "sequence"}
     out["stats"] = stats
+    out["activity"] = _activity(p.get("activity") or {})
     return out
 
 
@@ -377,6 +413,8 @@ def get_config() -> dict[str, Any]:
             "max_sec": config.MAX_SPEED_SEC,
         },
         "max_upload_bytes": config.MAX_UPLOAD_BYTES,
+        # Программа для Windows сама проверяет, не вышла ли новая версия
+        "app": {"version": config.app_version(), "desktop": static_dir() is not None},
         "features": {
             "face_detection": photo.face_detection_available(),
             "background_removal": photo.background_removal_available(),
@@ -583,6 +621,8 @@ def get_project(project_id: str) -> dict[str, Any]:
 def update_project(project_id: str, body: ProjectUpdate) -> dict[str, Any]:
     project = _get_or_404(project_id)
     fields = body.model_dump(exclude_none=True)
+    if "own_spool_m" in body.model_fields_set and body.own_spool_m is None:
+        fields["own_spool_m"] = None  # явный null — вернуть стандартную катушку
     if "name" in fields:
         fields["name"] = fields["name"].strip()
         if not fields["name"]:
@@ -599,6 +639,15 @@ def update_project(project_id: str, body: ProjectUpdate) -> dict[str, Any]:
     updated = storage.update_project(project_id, fields)
     assert updated is not None
     return _detail(updated)
+
+
+@app.post("/api/projects/{project_id}/activity", response_model=ActivityOut)
+def add_activity(project_id: str, body: ActivityIn) -> dict[str, Any]:
+    """Отметка «плели N секунд, прошли M шагов» — из режима плетения, раз в полминуты."""
+    _get_or_404(project_id)
+    updated = storage.add_activity(project_id, body.date, body.seconds, body.steps)
+    assert updated is not None
+    return _activity(updated["activity"])
 
 
 @app.delete("/api/projects/{project_id}", status_code=204)
@@ -659,6 +708,35 @@ def preview_png(
 def source_png(project_id: str) -> Response:
     _get_or_404(project_id)
     return Response(storage.get_source_png(project_id), media_type="image/png")
+
+
+def _pdf_response(pdf: bytes, ascii_name: str, title: str) -> Response:
+    return Response(
+        pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(title)}"},
+    )
+
+
+Paper = Annotated[str, Query(pattern="^(A4|A3)$", description="Формат бумаги")]
+
+
+@app.get("/api/projects/{project_id}/template.pdf")
+def project_template_pdf(project_id: str, paper: Paper = "A4") -> Response:
+    """Шаблон разметки гвоздей в натуральную величину для диаметра проекта."""
+    p = _get_or_404(project_id)
+    pdf = build_template_pdf(p["diameter_cm"], p["name"], paper)
+    return _pdf_response(pdf, f"template-{p['id']}.pdf", f"Шаблон разметки — {p['name']}.pdf")
+
+
+@app.get("/api/template.pdf")
+def template_pdf(
+    diameter_cm: Annotated[float, Query(ge=config.MIN_DIAMETER_CM, le=config.MAX_DIAMETER_CM)],
+    paper: Paper = "A4",
+) -> Response:
+    """Шаблон разметки для любого диаметра — без проекта."""
+    pdf = build_template_pdf(diameter_cm, "Нитеграф", paper)
+    return _pdf_response(pdf, f"template-{diameter_cm:g}cm.pdf", f"Шаблон разметки — {diameter_cm:g} см.pdf")
 
 
 @app.get("/api/projects/{project_id}/instructions.pdf")

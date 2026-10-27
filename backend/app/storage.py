@@ -38,14 +38,22 @@ CREATE TABLE IF NOT EXISTS images (
 
 # Колонки, добавленные после первой версии: старые базы дополняются при подключении.
 _MIGRATIONS = {
-    "projects": {"image_id": "TEXT", "prep": "TEXT NOT NULL DEFAULT '{}'"},
+    "projects": {
+        "image_id": "TEXT",
+        "prep": "TEXT NOT NULL DEFAULT '{}'",
+        "own_spool_m": "REAL",  # длина катушки, которая есть у человека (для плана смены катушек)
+        "activity": "TEXT NOT NULL DEFAULT '{}'",  # время плетения по дням: {"2026-10-27": [сек, шагов]}
+    },
     # mask_source: 'auto' — маска нейросети после чистки, 'edited' — поправлена кистью.
     # NULL у старых масок (до чистки) — такие считаются заново при первом запросе.
     "images": {"mask_auto": "BLOB", "mask_source": "TEXT"},
 }
 
-EDITABLE_FIELDS = ("name", "diameter_cm", "line_count", "current_step", "speed_sec")
-_SUMMARY_COLUMNS = "id, name, created_at, updated_at, diameter_cm, line_count, current_step, speed_sec, image_id, prep"
+EDITABLE_FIELDS = ("name", "diameter_cm", "line_count", "current_step", "speed_sec", "own_spool_m")
+_SUMMARY_COLUMNS = (
+    "id, name, created_at, updated_at, diameter_cm, line_count, current_step, speed_sec, image_id, prep,"
+    " own_spool_m, activity"
+)
 
 
 def _now() -> str:
@@ -81,6 +89,8 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         data["sequence"] = list(data["sequence"])  # bytes → list[int]
     if "prep" in data:
         data["prep"] = json.loads(data["prep"] or "{}")
+    if "activity" in data:
+        data["activity"] = json.loads(data["activity"] or "{}")
     return data
 
 
@@ -149,6 +159,20 @@ def update_project(project_id: str, fields: dict[str, Any]) -> dict[str, Any] | 
             )
             if cur.rowcount == 0:
                 return None
+    return get_project(project_id)
+
+
+def add_activity(project_id: str, day: str, seconds: float, steps: int) -> dict[str, Any] | None:
+    """Прибавить время плетения за день. Атомарно: два окна с одним проектом не теряют данные."""
+    with _connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT activity FROM projects WHERE id = ?", (project_id,)).fetchone()
+        if row is None:
+            return None
+        log = json.loads(row["activity"] or "{}")
+        sec, done = log.get(day, [0, 0])
+        log[day] = [round(sec + seconds, 1), done + steps]
+        conn.execute("UPDATE projects SET activity = ? WHERE id = ?", (json.dumps(log, sort_keys=True), project_id))
     return get_project(project_id)
 
 

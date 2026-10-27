@@ -30,6 +30,12 @@ const PATHS = {
   shrink: "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5",
   chevron: "M6 9l6 6 6-6",
   skip: "M6 6l9 6-9 6zM18 6v12",
+  clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2",
+  ruler: "M3 16 16 3l5 5L8 21zM7 12l2 2M10 9l2 2M13 6l2 2",
+  gift: "M4 10h16v4H4zM5 14h14v7H5zM12 10v11M12 10C10 6 7 5 7 7.5S10 10 12 10zM12 10c2-4 5-5 5-2.5S14 10 12 10z",
+  camera: "M3 7h12v10H3zM15 10l6-3v10l-6-3",
+  compare: "M12 3v18M5 6h4v12H5zM15 6h4v12h-4z",
+  wall: "M3 20h18M5 20V9l7-5 7 5v11M9 13a3 3 0 1 0 6 0 3 3 0 0 0-6 0",
   check: "M5 12.5 10 17 19 7",
   sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z",
 } as const;

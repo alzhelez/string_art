@@ -114,7 +114,7 @@ describe("WeavePlayer", () => {
 
   it("переход к шагу по номеру с ограничением диапазона", () => {
     setup();
-    fireEvent.click(screen.getByRole("tab", { name: /Переход/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Управление/ }));
     const input = screen.getByLabelText("Перейти к шагу");
     fireEvent.change(input, { target: { value: "99" } });
     fireEvent.click(screen.getByRole("button", { name: "Перейти" }));

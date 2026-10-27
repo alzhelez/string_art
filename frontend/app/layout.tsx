@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { UpdateNotice } from "@/components/UpdateNotice";
 import { AppHeader, THEME_SCRIPT } from "@/components/AppHeader";
 import "@fontsource/golos-text/400.css";
 import "@fontsource/golos-text/500.css";
@@ -29,7 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <AppHeader />
-        <main className="site-main">{children}</main>
+        <main className="site-main">
+          <UpdateNotice />
+          {children}
+        </main>
       </body>
     </html>
   );

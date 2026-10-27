@@ -16,6 +16,8 @@ datas = [
     (str(backend / "app" / "assets"), "app/assets"),
     (str(backend / "app" / "models"), "app/models"),
 ]
+if (backend / "app" / "_version.txt").is_file():  # версию пишет сборка (GitHub Actions)
+    datas.append((str(backend / "app" / "_version.txt"), "app"))
 datas += collect_data_files("webview")  # JS-мост pywebview
 datas += collect_data_files("cv2", includes=["data/*.xml"])  # запасной поиск лиц (Хаар)
 

@@ -311,4 +311,32 @@ public class ApiTests : IClassFixture<ApiFixture>
             new StringContent("{\"diameter_cm\": 5}", Encoding.UTF8, "application/json"));
         Assert.Equal((HttpStatusCode)422, bad.StatusCode);
     }
+
+    [Fact(DisplayName = "TC-API-31 шаблон разметки 1:1")]
+    public async Task TemplatePdf()
+    {
+        var p = await _api.CreateProject();
+        var id = p["id"]!.GetValue<string>();
+        var res = await _api.Http.GetAsync($"/api/projects/{id}/template.pdf");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal("application/pdf", res.Content.Headers.ContentType!.MediaType);
+        var bytes = await res.Content.ReadAsByteArrayAsync();
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
+        Assert.Equal((HttpStatusCode)422, (await _api.Http.GetAsync("/api/template.pdf?diameter_cm=10")).StatusCode);
+    }
+
+    [Fact(DisplayName = "TC-API-30 время плетения и своя катушка")]
+    public async Task ActivityAndSpool()
+    {
+        var p = await _api.CreateProject();
+        var id = p["id"]!.GetValue<string>();
+        async Task<JsonNode> Post(object body) => await ApiFixture.Json(await _api.Http.PostAsync($"/api/projects/{id}/activity",
+            new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")));
+        await Post(new { date = "2026-10-27", seconds = 30, steps = 12 });
+        var a = await Post(new { date = "2026-10-28", seconds = 30, steps = 8 });
+        Assert.Equal(60.0, a["total_sec"]!.GetValue<double>());
+        Assert.Equal(20, a["total_steps"]!.GetValue<int>());
+        var patched = await ApiFixture.Json(await _api.Patch(id, new { own_spool_m = 300 }));
+        Assert.Equal(300.0, patched["own_spool_m"]!.GetValue<double>());
+    }
 }
