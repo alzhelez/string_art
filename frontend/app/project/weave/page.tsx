@@ -47,9 +47,6 @@ function WeavePageInner() {
 
   return (
     <div className="weave-page">
-      <nav className="crumbs">
-        <Link href={routes.project(project.id)}>{project.name}</Link>
-      </nav>
       {saveError && (
         <p className="form-error" role="alert">
           {saveError}
@@ -61,6 +58,8 @@ function WeavePageInner() {
         diameterCm={project.diameter_cm}
         initialStep={project.current_step}
         initialSpeedSec={project.speed_sec}
+        title={project.name}
+        backHref={routes.project(project.id)}
         onStepChange={(s) => {
           setSaveError("");
           schedule({ current_step: s });

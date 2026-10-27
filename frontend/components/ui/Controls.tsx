@@ -106,3 +106,54 @@ export function Section({ title, children, aside }: { title: string; children: R
     </section>
   );
 }
+
+/**
+ * Вкладки. Все панели остаются в DOM (скрыты атрибутом hidden) — плееры внутри
+ * не останавливаются при переключении.
+ */
+export function Tabs({
+  label,
+  tabs,
+  value,
+  onChange,
+}: {
+  label: string;
+  tabs: { id: string; title: ReactNode; panel: ReactNode }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div className="tabs">
+      <div className="tab-list" role="tablist" aria-label={label}>
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            id={`tab-${t.id}`}
+            aria-selected={value === t.id}
+            aria-controls={`panel-${t.id}`}
+            tabIndex={value === t.id ? 0 : -1}
+            onClick={() => onChange(t.id)}
+            onKeyDown={(e) => {
+              if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+              e.preventDefault();
+              e.stopPropagation(); // стрелки здесь — для вкладок, а не для шагов плетения
+              const i = tabs.findIndex((x) => x.id === value);
+              const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+              onChange(next.id);
+              document.getElementById(`tab-${next.id}`)?.focus();
+            }}
+          >
+            {t.title}
+          </button>
+        ))}
+      </div>
+      {tabs.map((t) => (
+        <div key={t.id} role="tabpanel" id={`panel-${t.id}`} aria-labelledby={`tab-${t.id}`} hidden={value !== t.id} className="tab-panel">
+          {t.panel}
+        </div>
+      ))}
+    </div>
+  );
+}

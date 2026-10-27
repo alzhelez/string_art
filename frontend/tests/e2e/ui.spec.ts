@@ -140,6 +140,7 @@ test.describe("Плетение", () => {
     });
     const p = await createProject(request);
     await page.goto(`/project/weave?id=${p.id}`);
+    await page.getByRole("tab", { name: /Сигнал шага/ }).click();
     await page.getByRole("radio", { name: "Голос" }).click();
     await expect(page.getByLabel("Что озвучивать")).toBeVisible();
     await page.getByRole("button", { name: "Вперёд" }).click();
@@ -308,7 +309,7 @@ test.describe("Сходство, автонастройка, медиа, тем�
     await page.goto(`/project/weave?id=${p.id}`);
     const panel = page.getByTestId("media-panel");
     await panel.getByTestId("media-file-input").setInputFiles({ name: "Тишина.wav", mimeType: "audio/wav", buffer: silentWav(3) });
-    const audio = panel.getByTestId("media-element");
+    const audio = page.getByTestId("media-screen").getByTestId("media-element");
     await expect(audio).toBeAttached();
     await expect(panel.getByRole("list", { name: "Плейлист" })).toContainText("Тишина");
     const paused = () => audio.evaluate((el: HTMLMediaElement) => el.paused);
@@ -319,12 +320,60 @@ test.describe("Сходство, автонастройка, медиа, тем�
     await expect.poll(paused).toBe(true);
 
     // ссылки запоминаются между заходами
-    await panel.getByLabel("Ссылка на видео, музыку или радио").fill("https://youtu.be/dQw4w9WgXcQ");
+    await panel.getByLabel("Ссылка или код <iframe …>").fill("https://youtu.be/dQw4w9WgXcQ");
     await panel.getByRole("button", { name: "Добавить" }).click();
     await expect(panel.getByRole("listitem")).toHaveCount(2);
     await page.reload();
     await expect(page.getByTestId("media-panel").getByRole("listitem")).toHaveCount(1);
-    await expect(page.getByTestId("media-panel").locator("iframe")).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/);
+    await expect(page.getByTestId("media-screen").locator("iframe")).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/);
+  });
+
+  test("UI-19 фильм, шаг и схема видны одновременно; кино на весь экран с шагом", async ({ page, request, isMobile }) => {
+    if (!isMobile) await page.setViewportSize({ width: 1366, height: 768 }); // обычный ноутбук
+    const p = await createProject(request, { name: uniqueName("Кино") });
+    await page.goto(`/project/weave?id=${p.id}`);
+    await page.getByTestId("media-file-input").setInputFiles({ name: "Фильм.webm", mimeType: "video/webm", buffer: Buffer.from("x") });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const film = page.getByTestId("media-screen");
+    await expect(film).toBeVisible();
+    // без прокрутки: видео, «откуда → куда» и кнопка старта на экране
+    await expect(page.getByTestId("current-step")).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Старт" })).toBeInViewport();
+    await expect(film).toBeInViewport({ ratio: isMobile ? 0.6 : 0.9 });
+    if (!isMobile) await expect(page.getByTestId("board")).toBeInViewport({ ratio: 0.6 });
+
+    await page.getByTestId("cinema-toggle").click();
+    const hud = page.getByTestId("cinema-hud");
+    await expect(hud).toBeVisible();
+    await expect(hud).toContainText(await page.getByTestId("current-step").innerText());
+    await hud.getByRole("button", { name: "Вперёд" }).click();
+    await expect(page.getByTestId("step-counter")).toContainText("Шаг 2");
+    await hud.getByRole("button", { name: "Выйти из кино" }).click();
+    await expect(hud).toHaveCount(0);
+  });
+
+  test("UI-20 музыка — отдельная графа: код Яндекс Музыки и VK Видео", async ({ page, request }) => {
+    const p = await createProject(request, { name: uniqueName("Музыка") });
+    await page.goto(`/project/weave?id=${p.id}`);
+    const dock = page.getByTestId("music-dock");
+    await dock.getByLabel("Код Яндекс Музыки или ссылка").fill(
+      '<iframe frameborder="0" allow="clipboard-write" style="border:none;width:614px;height:556px;" width="614" height="556" src="https://music.yandex.ru/iframe/playlist/alzhelez2018/3">Слушайте <a href="https://music.yandex.ru/playlists/lk.1">Мне нравится</a> — <a href="https://music.yandex.ru/users/alzhelez2018">Alzhelez21</a> на Яндекс Музыке</iframe>',
+    );
+    await dock.getByRole("button", { name: "Добавить" }).click();
+    await expect(dock.getByTestId("music-frame")).toHaveAttribute("src", "https://music.yandex.ru/iframe/playlist/alzhelez2018/3");
+    await expect(dock).toContainText("Мне нравится — Alzhelez21");
+
+    const panel = page.getByTestId("media-panel");
+    await panel.getByLabel("Ссылка или код <iframe …>").fill(
+      '<iframe src="https://vkvideo.ru/video_ext.php?oid=-229696756&id=456255681&hash=41066a0b1e203f04&hd=4" width="1920" height="1080" allow="autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock;" frameborder="0" allowfullscreen></iframe>',
+    );
+    await panel.getByRole("button", { name: "Добавить" }).click();
+    await expect(page.getByTestId("media-screen").locator("iframe")).toHaveAttribute("src", /vkvideo\.ru\/video_ext\.php\?oid=-229696756&id=456255681&hash=41066a0b1e203f04/);
+    // музыка не пропала, когда появилось видео; обе графы помнятся после перезагрузки
+    await expect(dock.getByTestId("music-frame")).toBeAttached();
+    await page.reload();
+    await expect(page.getByTestId("music-dock").getByTestId("music-frame")).toBeAttached();
+    await expect(page.getByTestId("media-screen").locator("iframe")).toBeAttached();
   });
 
   test("UI-16 тёмная тема сохраняется", async ({ page }) => {

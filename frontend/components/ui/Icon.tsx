@@ -26,6 +26,10 @@ const PATHS = {
   brush: "M14 4l6 6-8.5 8.5-6-6zM5.5 12.5 3 21l8.5-2.5",
   undo: "M9 5 4 10l5 5M4 10h10a5 5 0 0 1 0 10h-3",
   arrowLeft: "M15 5 8 12l7 7",
+  expand: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
+  shrink: "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5",
+  chevron: "M6 9l6 6 6-6",
+  skip: "M6 6l9 6-9 6zM18 6v12",
   check: "M5 12.5 10 17 19 7",
   sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z",
 } as const;

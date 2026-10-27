@@ -1,16 +1,20 @@
-/* Нитеграф. Белый круг с гвоздями — главный герой; интерфейс вокруг спокойный,
-   с одной яркой «отбивочной» синей нитью для текущего действия. Две темы. */
+/* Нитеграф. Мастерская: белая доска с гвоздями — главный герой, вокруг — спокойный
+   холодный графит. Один яркий цвет — кобальтовая «нить» текущего действия.
+   Фирменный мотив — едва заметная нитяная графика на фоне. Две темы. */
 
 :root,
 :root[data-theme="light"] {
-  --bg: #eef0f3;
+  --bg: #e7eaef;
   --surface: #ffffff;
-  --surface-2: #f5f6f8;
-  --surface-3: #eaedf1;
-  --border: #dde1e7;
-  --border-strong: #c6ccd5;
-  --text: #15181d;
-  --text-2: #5b6472;
+  --surface-2: #f4f6f9;
+  --surface-3: #e8ecf1;
+  --border: #dde2e9;
+  --border-strong: #c3cad4;
+  --text: #12151b;
+  --text-2: #586172;
+  --motif: #12151b;
+  --motif-opacity: 0.06;
+  --glass: rgba(255, 255, 255, 0.72);
   --accent: #3550f0;
   --accent-ink: #2338c4;
   --accent-soft: #e7ebff;
@@ -19,19 +23,22 @@
   --danger-soft: #fdecea;
   --success: #1e8a4c;
   --stage: radial-gradient(120% 90% at 50% 40%, #ffffff 0%, #f1f3f6 55%, #e6e9ee 100%);
-  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07);
-  --shadow-2: 0 18px 40px -18px rgba(16, 24, 40, 0.28);
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px -16px rgba(16, 24, 40, 0.22);
+  --shadow-2: 0 24px 48px -22px rgba(16, 24, 40, 0.35);
   --focus: 0 0 0 3px rgba(53, 80, 240, 0.35);
   color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  --bg: #0f1216;
-  --surface: #171b21;
-  --surface-2: #1d222a;
-  --surface-3: #252b34;
-  --border: #2a313b;
-  --border-strong: #3a434f;
+  --bg: #0c0f14;
+  --surface: #151920;
+  --surface-2: #1b2029;
+  --surface-3: #232a34;
+  --border: #262d38;
+  --border-strong: #38414e;
+  --motif: #ffffff;
+  --motif-opacity: 0.05;
+  --glass: rgba(21, 25, 32, 0.72);
   --text: #edf0f4;
   --text-2: #9aa4b2;
   --accent: #7088ff;
@@ -42,7 +49,7 @@
   --danger-soft: rgba(255, 107, 98, 0.12);
   --success: #4cc98a;
   --stage: radial-gradient(120% 90% at 50% 40%, #232a33 0%, #171b21 60%, #12161b 100%);
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 10px 28px -18px rgba(0, 0, 0, 0.8);
   --shadow-2: 0 24px 48px -20px rgba(0, 0, 0, 0.7);
   --focus: 0 0 0 3px rgba(112, 136, 255, 0.45);
   color-scheme: dark;
@@ -51,8 +58,8 @@
 :root {
   --display: "Unbounded", "Golos Text", system-ui, sans-serif;
   --text-font: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --r-xl: 28px;
-  --r-lg: 20px;
+  --r-xl: 30px;
+  --r-lg: 22px;
   --r-md: 14px;
   --r-sm: 10px;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -68,10 +75,32 @@ html {
 
 body {
   margin: 0;
+  min-height: 100vh;
   background: var(--bg);
   color: var(--text);
   font: 400 1rem/1.5 var(--text-font);
   transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+/* Нитяная картина на фоне: огромная, бледная, уходит за край — подпись мастерской */
+body::before {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  top: -18vmax;
+  right: -16vmax;
+  width: 72vmax;
+  height: 72vmax;
+  background: var(--motif);
+  opacity: var(--motif-opacity);
+  pointer-events: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%2312151b' stroke-width='0.8'%3E%3Ccircle cx='300' cy='300' r='290'/%3E%3Cpath d='M590 300L78 486M78 486L201 27M201 27L522 486M522 486L114 78M114 78L538 134M538 134L423 563M423 563L155 49M155 49L580 225M580 225L114 522M114 522L486 78M486 78L505 505M505 505L62 134M62 134L563 177M563 177L399 573M399 573L14 350M14 350L538 134M538 134L155 551M155 551L78 114M78 114L580 225M580 225L325 589M325 589L250 14M250 14L466 538M466 538L49 445M49 445L551 155M551 155L375 580M375 580L27 201M27 201L551 445M551 445L78 114M78 114L522 486M522 486L95 505M95 505L505 95M505 95L95 505M95 505L375 20M375 20L573 399M573 399L62 466M62 466L155 49M155 49L466 538M466 538L20 375M20 375L445 49M445 49L275 589M275 589L37 177M37 177L573 399M573 399L134 538M134 538L466 62M466 62L350 586M350 586L225 20M225 20L300 590M300 590L37 177M37 177L486 78M486 78L114 522M114 522L486 78M486 78L78 486M78 486L250 14M250 14L505 505M505 505L49 445M49 445L538 134M538 134L20 375M20 375L275 11M275 11L325 589M325 589L10 300M10 300L589 325M589 325L134 538M134 538L399 27M399 27L134 538M134 538L445 49M445 49L275 589M275 589L134 62M134 62L538 466M538 466L62 134M62 134L580 375'/%3E%3C/g%3E%3Cg fill='%2312151b'%3E%3Ccircle cx=%22590%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%22590%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%2210%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22275%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%2210%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22275%22 r=%222.2%22/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%2312151b' stroke-width='0.8'%3E%3Ccircle cx='300' cy='300' r='290'/%3E%3Cpath d='M590 300L78 486M78 486L201 27M201 27L522 486M522 486L114 78M114 78L538 134M538 134L423 563M423 563L155 49M155 49L580 225M580 225L114 522M114 522L486 78M486 78L505 505M505 505L62 134M62 134L563 177M563 177L399 573M399 573L14 350M14 350L538 134M538 134L155 551M155 551L78 114M78 114L580 225M580 225L325 589M325 589L250 14M250 14L466 538M466 538L49 445M49 445L551 155M551 155L375 580M375 580L27 201M27 201L551 445M551 445L78 114M78 114L522 486M522 486L95 505M95 505L505 95M505 95L95 505M95 505L375 20M375 20L573 399M573 399L62 466M62 466L155 49M155 49L466 538M466 538L20 375M20 375L445 49M445 49L275 589M275 589L37 177M37 177L573 399M573 399L134 538M134 538L466 62M466 62L350 586M350 586L225 20M225 20L300 590M300 590L37 177M37 177L486 78M486 78L114 522M114 522L486 78M486 78L78 486M78 486L250 14M250 14L505 505M505 505L49 445M49 445L538 134M538 134L20 375M20 375L275 11M275 11L325 589M325 589L10 300M10 300L589 325M589 325L134 538M134 538L399 27M399 27L134 538M134 538L445 49M445 49L275 589M275 589L134 62M134 62L538 466M538 466L62 134M62 134L580 375'/%3E%3C/g%3E%3Cg fill='%2312151b'%3E%3Ccircle cx=%22590%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%22590%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%2210%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22275%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%2210%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22275%22 r=%222.2%22/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.site-main {
+  position: relative;
+  z-index: 1;
 }
 
 a {
@@ -138,22 +167,32 @@ h2 {
 }
 
 /* --- шапка --------------------------------------------------------------- */
+/* Шапка — парящая «капсула» из матового стекла */
 .app-header {
   position: sticky;
-  top: 0;
+  top: 10px;
   z-index: 20;
-  backdrop-filter: saturate(1.4) blur(14px);
-  background: color-mix(in srgb, var(--bg) 78%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  max-width: calc(1240px - 2rem);
+  margin: 10px auto 0;
+  border-radius: 20px;
+  backdrop-filter: saturate(1.5) blur(16px);
+  -webkit-backdrop-filter: saturate(1.5) blur(16px);
+  background: var(--glass);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  box-shadow: var(--shadow-1);
+}
+
+@media (max-width: 1272px) {
+  .app-header {
+    margin-inline: 1rem;
+  }
 }
 
 .app-header-inner {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 0.7rem 1rem;
+  padding: 0.5rem 0.55rem 0.5rem 1rem;
 }
 
 .brand {
@@ -203,7 +242,7 @@ h2 {
 .site-main {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 1.75rem 1rem 5rem;
+  padding: 1.5rem 1rem 5rem;
 }
 
 /* --- кнопки -------------------------------------------------------------- */
@@ -236,9 +275,11 @@ h2 {
 }
 
 .btn.primary {
+  border-radius: 999px;
+  padding-inline: 1.4rem;
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 16px -8px var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.12), 0 10px 22px -12px var(--accent);
 }
 
 .btn.primary:hover:not(:disabled) {
@@ -249,6 +290,7 @@ h2 {
   background: var(--surface);
   color: var(--text);
   border-color: var(--border-strong);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
 }
 
 .btn.secondary:hover:not(:disabled) {
@@ -638,9 +680,8 @@ input[aria-invalid="true"] {
 .panel-section-head h2 {
   font-family: var(--text-font);
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.92rem;
   color: var(--text-2);
-  letter-spacing: 0.02em;
 }
 
 /* --- новый портрет -------------------------------------------------------- */
@@ -662,6 +703,7 @@ input[aria-invalid="true"] {
   border-radius: var(--r-xl);
   background: var(--stage);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 
@@ -842,6 +884,7 @@ input[aria-invalid="true"] {
   border-radius: var(--r-lg);
   background: var(--surface);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
   color: inherit;
   text-decoration: none;
   text-align: center;
@@ -924,7 +967,8 @@ input[aria-invalid="true"] {
 
 .stage {
   position: sticky;
-  top: 5rem;
+  top: 6rem;
+  box-shadow: var(--shadow-1);
   padding: 1.5rem;
   border-radius: var(--r-xl);
   background: var(--stage);
@@ -1072,42 +1116,75 @@ input[aria-invalid="true"] {
   justify-items: start;
 }
 
-/* --- плетение --------------------------------------------------------------- */
+/* --- плетение ---------------------------------------------------------------
+   Сцена слева (схема или фильм), справа — шаг «откуда → куда» и маленькая схема.
+   Всё главное помещается в один экран ноутбука; настройки — во вкладках ниже. */
 .weave {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) 360px;
   grid-template-areas:
-    "main board"
-    "extras board";
-  gap: 1.5rem;
+    "top top"
+    "stage rail"
+    "settings rail";
+  gap: 1rem 1.25rem;
   align-items: start;
 }
 
-.weave-main {
-  grid-area: main;
-  padding: 1.75rem;
-  border-radius: var(--r-xl);
+.weave-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem 1.1rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1.1rem 0.6rem 0.6rem;
+  border-radius: var(--r-lg);
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-1);
+  font-variant-numeric: tabular-nums;
 }
 
-.weave-progress {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 0.6rem;
-  font-variant-numeric: tabular-nums;
+.weave-back {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.weave-back:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.weave-title {
+  font: 600 1rem var(--display);
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .weave-count {
   color: var(--text-2);
+  white-space: nowrap;
 }
 
 .weave-count strong,
 .weave-percent {
   color: var(--text);
   font-weight: 600;
+}
+
+.weave-top .bar {
+  flex: 1 1 160px;
+}
+
+.thread-used {
+  color: var(--text-2);
+  font-size: 0.9rem;
 }
 
 .bar {
@@ -1125,55 +1202,230 @@ input[aria-invalid="true"] {
   transition: width 0.3s var(--ease);
 }
 
+/* Сцена */
+.weave-stage {
+  grid-area: stage;
+  position: relative;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.no-video .weave-stage {
+  padding: 1.25rem;
+  background: var(--stage);
+}
+
+.stage-board {
+  width: min(100%, calc(100vh - 230px));
+  min-width: 260px;
+  margin: 0 auto;
+}
+
+.has-video .weave-stage {
+  background: #05060a;
+  border-color: #05060a;
+}
+
+.media-screen.is-video iframe,
+.media-screen.is-video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: calc(100vh - 250px);
+  min-height: 200px;
+  border: 0;
+  background: #000;
+}
+
+.media-screen.is-audio {
+  padding: 1.25rem;
+  background: var(--stage);
+}
+
+.media-screen.is-audio iframe {
+  display: block;
+  width: 100%;
+  height: 450px;
+  border: 0;
+  border-radius: var(--r-md);
+}
+
+.media-audio {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.media-audio > div {
+  display: grid;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+}
+
+.media-audio audio {
+  width: 100%;
+}
+
+.stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem 0.5rem 1.1rem;
+  background: #05060a;
+  color: #e9ecf2;
+}
+
+.stage-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  color: #aeb6c4;
+}
+
+.btn.on-dark {
+  color: #e9ecf2;
+}
+
+.btn.on-dark:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Правая колонка */
+.weave-rail {
+  grid-area: rail;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.step-card {
+  container-type: inline-size; /* размер шага — от ширины карточки, а не окна */
+  min-width: 0;
+  padding: 1.25rem 1.35rem 1.35rem;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+
 /* Главный элемент: читается с расстояния вытянутой руки, пока руки заняты леской */
 .weave-step {
   display: flex;
-  align-items: baseline;
-  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.12em;
+  margin: 0;
   white-space: nowrap;
-  gap: 0.25em;
-  margin: 1.5rem 0 0;
-  font: 700 clamp(2.4rem, 5.6vw, 5rem) / 1 var(--display);
+  font: 700 clamp(2.3rem, 3.6vw, 3.2rem) / 1 var(--display);
+  font-size: min(3.4rem, 13cqi);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  animation: step-in 0.22s var(--ease);
 }
 
-@keyframes step-in {
-  from {
-    opacity: 0.2;
-    transform: translateY(6px);
-  }
+.nail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.14em;
 }
 
-.weave-step .from,
-.weave-step .arrow {
+.nail.from {
   color: var(--text-2);
   font-weight: 500;
 }
 
-.weave-step .to {
+.nail.to {
   color: var(--accent);
+}
+
+.nail-compass {
+  width: 0.62em;
+  height: 0.62em;
+  flex: none;
+  overflow: visible;
+}
+
+.nc-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  opacity: 0.55;
+}
+
+.nc-quarter {
+  fill: currentColor;
+  opacity: 0.2;
+}
+
+.nc-axis {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.35;
+}
+
+.nc-dot {
+  fill: currentColor;
+}
+
+/* Нить «откуда → куда» прорисовывается заново на каждом шаге */
+.thread {
+  width: 0.95em;
+  height: 0.3em;
+  flex: none;
+  margin: 0 0.04em;
+  overflow: visible;
+  color: var(--text-2);
+}
+
+.thread line,
+.thread path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.thread line {
+  stroke-dasharray: 56;
+  animation: draw-thread 0.4s var(--ease);
+}
+
+@keyframes draw-thread {
+  from {
+    stroke-dashoffset: 56;
+  }
 }
 
 .weave-hint {
   min-height: 1.5em;
-  margin: 0.9rem 0 1.5rem;
-  font-size: 1.1rem;
+  margin: 0.75rem 0 1.1rem;
   color: var(--text-2);
 }
 
 .transport {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.6rem;
 }
 
 .round-btn {
   display: inline-grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  flex: none;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   border: 1px solid var(--border-strong);
   background: var(--surface);
@@ -1197,17 +1449,17 @@ input[aria-invalid="true"] {
 
 .round-btn.play {
   display: inline-flex;
-  gap: 0.6rem;
+  flex: 1;
+  gap: 0.55rem;
   width: auto;
-  min-width: 190px;
-  height: 72px;
-  padding: 0 1.75rem;
-  border-radius: 36px;
+  height: 62px;
+  padding: 0 1.2rem;
+  border-radius: 31px;
   border: 0;
   background: var(--accent);
   color: var(--on-accent);
-  font: 600 1.15rem var(--text-font);
-  box-shadow: 0 10px 24px -10px var(--accent);
+  font: 600 1.08rem var(--text-font);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.14), 0 12px 24px -12px var(--accent);
 }
 
 .round-btn.play:hover:not(:disabled) {
@@ -1217,142 +1469,197 @@ input[aria-invalid="true"] {
 .speed {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
-  margin: 1.25rem 0 0.75rem;
+  margin-top: 1rem;
+  padding: 0.3rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.speed .icon-btn {
+  border-color: transparent;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
 }
 
 .speed-value {
-  min-width: 8.5rem;
   text-align: center;
-  font: 600 1.05rem var(--display);
+  font: 600 1rem var(--display);
   font-variant-numeric: tabular-nums;
 }
 
-.thread-used {
-  margin: 0;
-  color: var(--text-2);
-}
-
-.weave-board {
-  grid-area: board;
-  position: sticky;
-  top: 5rem;
-  padding: 1.25rem;
+.rail-board {
+  padding: 0.9rem;
   border-radius: var(--r-xl);
   background: var(--stage);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
 }
 
-.weave-extras {
-  grid-area: extras;
+/* Рядом с фильмом схема поменьше — чтобы фильм, шаг и схема помещались в один экран */
+.rail-board .board {
+  width: clamp(180px, calc(100vh - 520px), 300px);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Музыка — своя графа в правой колонке */
+.music-dock {
   display: grid;
-  gap: 1.25rem;
-  padding: 0.25rem 1.5rem 1.5rem;
+  gap: 0.7rem;
+  padding: 0.85rem 0.9rem 0.95rem;
   border-radius: var(--r-xl);
   background: var(--surface);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
 }
 
-.weave-extras .panel-section:first-child {
-  border-top: 0;
-}
-
-.inline-field {
+.music-head {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.jump {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.jump input {
-  width: 7rem;
-}
-
-.keys {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-2);
-}
-
-kbd {
-  font: 600 0.8rem var(--text-font);
-  padding: 0.1rem 0.45rem;
-  border: 1px solid var(--border-strong);
-  border-bottom-width: 2px;
-  border-radius: 6px;
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-/* Медиа */
-.media {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.media-stage {
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: #000;
-}
-
-.media-stage.is-video iframe,
-.media-stage.is-video video {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border: 0;
-  background: #000;
-}
-
-.media-stage.is-audio {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-
-.media-audio {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.5rem;
+  padding-left: 0.3rem;
   color: var(--accent);
 }
 
-.media-audio > div {
-  display: grid;
-  gap: 0.5rem;
+.music-head h2 {
   flex: 1;
   min-width: 0;
+  display: grid;
+  font: 600 0.95rem var(--text-font);
   color: var(--text);
 }
 
-.media-audio audio {
-  width: 100%;
-}
-
-.media-empty {
-  margin: 0;
-  padding: 1rem;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--r-lg);
+.music-now {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  font-size: 0.82rem;
   color: var(--text-2);
 }
 
-.media-link {
+.music-tools {
   display: flex;
+  gap: 0.15rem;
+}
+
+.music-tools [aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.music-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  transition: height 0.25s var(--ease);
+}
+
+.music-audio {
+  width: 100%;
+}
+
+.music-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+/* Вкладки настроек */
+.weave-settings {
+  grid-area: settings;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.tab-list {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab-list [role="tab"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-2);
+  font: 600 0.95rem var(--text-font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab-list [role="tab"]:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.tab-list [role="tab"][aria-selected="true"] {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+
+.tab-panel {
+  padding: 1.1rem 1.25rem 1.3rem;
+}
+
+.tab-panel > div {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel-lead {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.93rem;
+  max-width: 62ch;
+}
+
+.add-media {
+  display: grid;
   gap: 0.5rem;
 }
 
-.media-link input {
+.add-media-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.add-media textarea {
   flex: 1;
   min-width: 0;
+  min-height: 46px;
+  max-height: 140px;
+  padding: 0.7rem 0.85rem;
+  resize: vertical;
+  font: inherit;
+  font-size: 0.95rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.add-media textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus);
+  outline: none;
+}
+
+.add-media-row .btn.small {
+  min-height: 46px;
 }
 
 .playlist {
@@ -1396,6 +1703,278 @@ kbd {
   white-space: nowrap;
 }
 
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.jump {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.jump input {
+  width: 7rem;
+}
+
+.keys {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  line-height: 2;
+}
+
+kbd {
+  font: 600 0.8rem var(--text-font);
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Кино: сцена на весь экран, шаг — поверх фильма в углу */
+.weave-stage:fullscreen,
+.weave.is-cinema .weave-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.weave-stage:fullscreen .media-screen.is-video iframe,
+.weave-stage:fullscreen .media-screen.is-video video,
+.weave.is-cinema .media-screen.is-video iframe,
+.weave.is-cinema .media-screen.is-video video {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  aspect-ratio: auto;
+  object-fit: contain;
+}
+
+.weave-stage:fullscreen .stage-bar,
+.weave.is-cinema .stage-bar {
+  display: none;
+}
+
+.cinema-hud {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  display: grid;
+  gap: 0.6rem;
+  min-width: 340px;
+  padding: 0.85rem 1rem 0.9rem 1.2rem;
+  border-radius: 22px;
+  background: rgba(8, 10, 14, 0.74);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.9);
+}
+
+.hud-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.hud-progress span {
+  display: block;
+  height: 100%;
+  background: #8ea0ff;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.weave-step.is-compact {
+  font-size: 2rem;
+  color: #fff;
+}
+
+.weave-step.is-compact .nail.from,
+.weave-step.is-compact .thread {
+  color: #b6bfcd;
+}
+
+.weave-step.is-compact .nail.to {
+  color: #8ea0ff;
+}
+
+.hud-count {
+  color: #b6bfcd;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-buttons {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.hud-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+
+.hud-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.hud-btn:disabled {
+  opacity: 0.35;
+}
+
+.hud-btn.play {
+  width: 48px;
+  height: 48px;
+  background: #5b72ff;
+}
+
+@media (max-width: 1100px) {
+  .weave {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .thread-used {
+    display: none;
+  }
+}
+
+/* Телефон и узкий экран: шаг прилипает сверху, под ним фильм, схема, музыка, настройки */
+@media (max-width: 900px) {
+  .weave {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .weave > *,
+  .weave-rail > * {
+    grid-area: auto;
+  }
+
+  .weave-rail {
+    display: contents;
+  }
+
+  .weave-top {
+    order: 1;
+  }
+
+  .step-card {
+    order: 2;
+  }
+
+  .weave-stage {
+    order: 3;
+  }
+
+  .rail-board {
+    order: 4;
+  }
+
+  .music-dock {
+    order: 5;
+  }
+
+  .weave-settings {
+    order: 6;
+  }
+
+  .has-video .step-card {
+    position: sticky;
+    top: 74px;
+    z-index: 5;
+    padding: 0.85rem 1rem 0.9rem;
+  }
+
+  .has-video .step-card .weave-step {
+    font-size: 2rem;
+  }
+
+  .has-video .step-card .weave-hint,
+  .has-video .step-card .speed {
+    display: none;
+  }
+
+  .has-video .step-card .weave-step {
+    margin-bottom: 0.7rem;
+  }
+
+  .has-video .round-btn {
+    width: 46px;
+    height: 46px;
+  }
+
+  .has-video .round-btn.play {
+    height: 50px;
+  }
+
+  .stage-board,
+  .rail-board .board {
+    width: min(100%, 460px);
+    min-width: 0;
+  }
+
+  .media-screen.is-video iframe,
+  .media-screen.is-video video {
+    max-height: none;
+  }
+
+  .keys {
+    display: none;
+  }
+
+  .cinema-hud {
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .weave-top {
+    padding: 0.5rem 0.8rem 0.5rem 0.4rem;
+  }
+
+  .weave-title {
+    max-width: 9ch;
+  }
+
+  .stage-bar .btn {
+    padding-inline: 0.6rem;
+  }
+
+  .hud-row {
+    flex-wrap: wrap;
+  }
+}
+
 /* --- адаптив ------------------------------------------------------------- */
 @media (max-width: 900px) {
   .new-project,
@@ -1413,32 +1992,12 @@ kbd {
     position: static;
   }
 
-  .weave {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "main"
-      "board"
-      "extras";
-  }
-
-  .weave-board {
-    position: static;
-  }
-
-  .keys {
-    display: none;
-  }
 }
 
 @media (max-width: 520px) {
-  .inspector,
-  .weave-main {
+  .inspector {
     padding: 1.1rem;
     border-radius: var(--r-lg);
-  }
-
-  .round-btn.play {
-    min-width: 150px;
   }
 }
 
