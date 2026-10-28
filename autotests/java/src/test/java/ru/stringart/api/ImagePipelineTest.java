@@ -28,6 +28,8 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 // Ошибка чтения
 import java.io.IOException;
+// Кодировка для байтов тела запроса
+import java.nio.charset.StandardCharsets;
 // Чтение файла в байты
 import java.nio.file.Files;
 // Map — тело запроса
@@ -183,8 +185,8 @@ public class ImagePipelineTest extends BaseApiTest {
         JsonPath img = uploadImage(FACE_JPG, "image/jpeg");
         // id
         String id = img.getString("id");
-        // Не PNG → 400
-        api().contentType("image/png").body("not png").put("/api/images/" + id + "/mask.png").then().statusCode(400);
+        // Не PNG → 400 (тело — байты: строку с типом image/png RestAssured закодировать не может)
+        api().contentType("image/png").body("not png".getBytes(StandardCharsets.US_ASCII)).put("/api/images/" + id + "/mask.png").then().statusCode(400);
         // Маска из фикстур
         JsonPath st = api().contentType("image/png").body(Files.readAllBytes(MASK_PNG.toPath()))
                 // → 200, разбираем
@@ -200,6 +202,6 @@ public class ImagePipelineTest extends BaseApiTest {
         // Высота как у фото
         assertThat(saved.getHeight()).isEqualTo(img.getInt("height"));
         // Чужой id → 404
-        api().contentType("image/png").body("x").put("/api/images/000000000000/mask.png").then().statusCode(404);
+        api().contentType("image/png").body(new byte[]{1}).put("/api/images/000000000000/mask.png").then().statusCode(404);
     }
 }

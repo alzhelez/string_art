@@ -194,6 +194,17 @@ jobs:
           "@
           # Удаляем прошлый релиз вместе с тегом (если его нет — ошибку не показываем)
           gh release delete desktop-latest --yes --cleanup-tag 2>$null
-          # Создаём новый релиз с двумя файлами (строка продолжается на следующей — обратная кавычка в конце)
-          gh release create desktop-latest dist/Nitegraf-Setup.exe dist/Nitegraf-portable.zip `
-            --title "Нитеграф для Windows $env:APP_VERSION" --notes $notes --target $env:GITHUB_SHA --latest
+          # До трёх попыток: сразу после удаления GitHub иногда ещё «помнит» старый тег, и создание падает
+          for ($i = 1; $i -le 3; $i++) {
+            # Создаём новый релиз с двумя файлами (строка продолжается на следующей — обратная кавычка в конце)
+            gh release create desktop-latest dist/Nitegraf-Setup.exe dist/Nitegraf-portable.zip `
+              --title "Нитеграф для Windows $env:APP_VERSION" --notes $notes --target $env:GITHUB_SHA --latest
+            # Получилось — дальше не пробуем
+            if ($LASTEXITCODE -eq 0) { break }
+            # Не получилось — пишем предупреждение в журнал и ждём 15 секунд
+            Write-Host "::warning::Релиз не создался (попытка $i), повторяем"
+            # Пауза перед следующей попыткой
+            Start-Sleep -Seconds 15
+          }
+          # Итог шага — результат последней попытки
+          exit $LASTEXITCODE
