@@ -281,4 +281,60 @@ public class ExtraApiTests : IClassFixture<ApiFixture>
             await _api.Http.DeleteAsync($"/api/projects/{id}");
         }
     }
+
+    // Отправить файл проекта на импорт
+    private async Task<HttpResponseMessage> ImportFile(byte[] content)
+    {
+        // Форма
+        using var form = new MultipartFormDataContent();
+        // Содержимое файла
+        var file = new ByteArrayContent(content);
+        // Тип JSON
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        // Поле file
+        form.Add(file, "file", "p.nitegraf");
+        // Отправляем
+        return await _api.Http.PostAsync("/api/projects/import", form);
+    }
+
+    // Тест
+    [Fact(DisplayName = "TC-API-33 экспорт → импорт: новый портрет с тем же прогрессом; мусор → 400")]
+    // Перенос файлом
+    public async Task Transfer()
+    {
+        // Проект
+        var p = await _api.CreateProject("C#: перенос");
+        // id
+        var id = p["id"]!.GetValue<string>();
+        // Шаг 99
+        Assert.Equal(HttpStatusCode.OK, (await _api.Patch(id, new { current_step = 99 })).StatusCode);
+        // Экспорт
+        var export = await _api.Http.GetAsync($"/api/projects/{id}/export");
+        // → 200
+        Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+        // Имя файла .nitegraf
+        Assert.Contains(".nitegraf", export.Content.Headers.ContentDisposition!.ToString());
+        // Импорт
+        var imported = await ImportFile(await export.Content.ReadAsByteArrayAsync());
+        // → 201
+        Assert.Equal(HttpStatusCode.Created, imported.StatusCode);
+        // Копия
+        var copy = await ApiFixture.Json(imported);
+        // Блок с уборкой
+        try
+        {
+            // Новый id
+            Assert.NotEqual(id, copy["id"]!.GetValue<string>());
+            // Тот же шаг
+            Assert.Equal(99, copy["current_step"]!.GetValue<int>());
+        }
+        // В любом случае —
+        finally
+        {
+            // — удаляем копию
+            await _api.Http.DeleteAsync($"/api/projects/{copy["id"]!.GetValue<string>()}");
+        }
+        // Не файл проекта → 400
+        Assert.Equal(HttpStatusCode.BadRequest, (await ImportFile(Encoding.UTF8.GetBytes("hello"))).StatusCode);
+    }
 }

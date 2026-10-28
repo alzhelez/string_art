@@ -648,4 +648,39 @@ class StringArtApiTest < Minitest::Test
     # Третьей нити нет → 422
     assert_equal '422', Api.patch("/api/projects/#{p['id']}", layer: 2, line_count: 300).code
   end
+
+  # TC-API-33: экспорт → импорт даёт новый портрет с тем же прогрессом; мусор → 400
+  def test_tc_api_33_transfer
+    # Проект
+    p = create_project
+    # Шаг 99
+    Api.patch("/api/projects/#{p['id']}", current_step: 99)
+    # Экспорт
+    res = Api.get("/api/projects/#{p['id']}/export")
+    # → 200, имя файла .nitegraf
+    assert_equal '200', res.code
+    # Заголовок вложения
+    assert_includes res['Content-Disposition'], '.nitegraf'
+    # Помощник: отправить файл проекта
+    send_file = lambda do |body|
+      # Запрос
+      req = Net::HTTP::Post.new('/api/projects/import')
+      # Форма с файлом
+      req.set_form([['file', body, { filename: 'p.nitegraf', content_type: 'application/json' }]], 'multipart/form-data')
+      # Отправляем
+      Api.http { |h| h.request(req) }
+    end
+    # Импорт
+    imported = send_file.call(res.body)
+    # → 201
+    assert_equal '201', imported.code, imported.body
+    # Копия
+    copy = Api.json(imported)
+    # Удалить после теста
+    @created << copy['id']
+    # Новый id, тот же шаг и схема
+    assert_equal [true, 99, p['sequence']], [copy['id'] != p['id'], copy['current_step'], copy['sequence']]
+    # Не файл проекта → 400
+    assert_equal '400', send_file.call('hello').code
+  end
 end

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 # Чтение картинок из байтов
 import io
+# JSON файла проекта
+import json
 # Переменные окружения (адрес фронтенда, папка статики)
 import os
 # Регулярные выражения: проверка id, имя файла без расширения
@@ -31,10 +33,10 @@ import numpy as np
 # Работа с картинками
 from PIL import Image
 # Pydantic — описание и автоматическая проверка входных/выходных данных
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 # Наши модули: настройки, слои цветных портретов, палитра, подготовка фото, база данных
-from . import config, layers as color_layers, palette, photo, storage
+from . import config, layers as color_layers, palette, photo, storage, transfer
 # Алгоритм и предрасчёт линий
 from .algorithm import build_line_cache, generate_sequence
 # Шаг гвоздей по дуге и метки гвоздей
@@ -1379,6 +1381,75 @@ def delete_project(project_id: str) -> Response:
     storage.delete_project(project_id)
     # Пустой ответ
     return Response(status_code=204)
+
+
+# Сохранить портрет файлом «.nitegraf» (перенос на другой компьютер или в телефон)
+@app.get("/api/projects/{project_id}/export")
+# По id
+def export_project(project_id: str) -> Response:
+    """Файл проекта: схема всех нитей, прогресс, учёт времени, фото и маска."""
+    # Проект
+    p = _get_or_404(project_id)
+    # Содержимое файла — JSON, русские буквы как есть
+    body = json.dumps(transfer.export_project(p), ensure_ascii=False)
+    # Имя файла латиницей
+    ascii_name = f"nitegraf-{p['id']}{transfer.EXTENSION}"
+    # Имя по-русски
+    utf_name = quote(f"{p['name']}{transfer.EXTENSION}")
+    # Ответ-вложение
+    return Response(
+        # JSON
+        body.encode("utf-8"),
+        # Тип
+        media_type="application/json",
+        # Скачать с двумя вариантами имени
+        headers={"Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{utf_name}"},
+    )
+
+
+# Открыть файл проекта: создаётся новый портрет со всем прогрессом
+@app.post("/api/projects/import", response_model=ProjectDetail, status_code=201)
+# Файл в форме
+def import_project(file: Annotated[UploadFile, File(description="Файл .nitegraf")]) -> dict[str, Any]:
+    """Новый портрет из файла «.nitegraf» — того же формата, что отдаёт /export."""
+    # Читаем не больше лимита + 1 байт
+    raw = file.file.read(transfer.MAX_FILE_BYTES + 1)
+    # Больше лимита —
+    if len(raw) > transfer.MAX_FILE_BYTES:
+        # — 413
+        raise HTTPException(413, "Файл слишком большой (максимум 40 МБ)")
+    # Разбираем JSON
+    try:
+        # Текст UTF-8 → данные
+        body = json.loads(raw.decode("utf-8"))
+    # Не текст или не JSON
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        # 400
+        raise HTTPException(400, "Это не файл проекта «Нитеграфа»") from exc
+    # Не тот формат —
+    if not isinstance(body, dict) or body.get("format") != transfer.FORMAT:
+        # — 400
+        raise HTTPException(400, "Это не файл проекта «Нитеграфа»")
+    # Проверка содержимого
+    try:
+        # Модель файла
+        data = transfer.TransferFile.model_validate(body)
+    # Испорчен
+    except ValidationError as exc:
+        # Первая ошибка — понятным текстом
+        first = exc.errors()[0]
+        # Где и что
+        raise HTTPException(422, f"Файл проекта испорчен: {first['msg'].removeprefix('Value error, ')} ({'.'.join(map(str, first['loc']))})") from exc
+    # Создаём портрет
+    try:
+        # Импорт
+        project = transfer.import_project(data)
+    # Испорченные картинки
+    except ValueError as exc:
+        # 422
+        raise HTTPException(422, str(exc)) from exc
+    # Полный ответ
+    return _detail(project)
 
 
 # Кривая сходства

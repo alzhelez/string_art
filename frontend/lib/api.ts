@@ -413,4 +413,15 @@ export const api = {
   pdfUrl: (id: string) => `/api/projects/${id}/instructions.pdf`,
   // Адрес шаблона разметки
   templateUrl: (id: string, paper: "A4" | "A3" = "A4") => `/api/projects/${id}/template.pdf?paper=${paper}`,
+  // Файл проекта .nitegraf (перенос на другой компьютер или в телефон)
+  exportUrl: (id: string) => `/api/projects/${id}/export`,
+  // Открыть файл проекта — новый портрет со всем прогрессом
+  importFile: (file: Blob, filename: string) => {
+    // Форма с файлом
+    const form = new FormData();
+    // Поле file
+    form.append("file", file, filename);
+    // POST-запрос
+    return request<Project>("/api/projects/import", { method: "POST", body: form });
+  },
 };

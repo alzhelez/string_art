@@ -29,8 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 // Раздел отчёта
 @Epic("String Art API")
 // Подраздел
-@Feature("Цветные портреты")
-// Портрет из нескольких нитей
+@Feature("Цветные портреты и перенос файлом")
+// Портрет из нескольких нитей и файл проекта
 public class ColorLayersTest extends BaseApiTest {
 
     // Фото с лицом
@@ -86,5 +86,37 @@ public class ColorLayersTest extends BaseApiTest {
         assertThat(api().get("/api/projects/" + id + "/similarity?layer=1").then().statusCode(200).extract().jsonPath().getList("curve")).hasSize(25);
         // Третьей нити нет → 422
         patch(id, "{\"layer\": 2, \"line_count\": 300}").then().statusCode(422);
+    }
+
+    // Тест
+    @Test(description = "TC-API-33 экспорт → импорт: новый портрет с тем же прогрессом; мусор → 400")
+    // Номер кейса
+    @Story("TC-API-33")
+    // Перенос файлом
+    public void transfer() {
+        // Проект
+        String id = createProject("Перенос", "50").getString("id");
+        // Шаг 99
+        patch(id, "{\"current_step\": 99}").then().statusCode(200);
+        // Экспорт
+        io.restassured.response.Response file = api().get("/api/projects/" + id + "/export");
+        // → 200
+        file.then().statusCode(200);
+        // Имя файла .nitegraf
+        assertThat(file.header("Content-Disposition")).contains(".nitegraf");
+        // Импорт файлом
+        JsonPath copy = api().multiPart("file", "p.nitegraf", file.asByteArray(), "application/json")
+                // → 201, разбираем
+                .post("/api/projects/import").then().statusCode(201).extract().jsonPath();
+        // Удалить копию после теста
+        cleanUpLater(copy.getString("id"));
+        // Новый id
+        assertThat(copy.getString("id")).isNotEqualTo(id);
+        // Тот же шаг
+        assertThat(copy.getInt("current_step")).isEqualTo(99);
+        // Не файл проекта → 400
+        api().multiPart("file", "x.txt", "hello".getBytes(java.nio.charset.StandardCharsets.UTF_8), "text/plain")
+                // Отправляем
+                .post("/api/projects/import").then().statusCode(400);
     }
 }

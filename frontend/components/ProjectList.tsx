@@ -3,6 +3,8 @@
 
 // Ссылка Next.js
 import Link from "next/link";
+// Переход в студию после открытия файла
+import { useRouter } from "next/navigation";
 // Хуки React
 import { useCallback, useEffect, useState } from "react";
 // Адреса страниц
@@ -11,6 +13,8 @@ import { routes } from "@/lib/routes";
 import { api, ApiError, type ProjectSummary } from "@/lib/api";
 // Форматирование дат и чисел
 import { date, num } from "@/lib/format";
+// Иконки
+import { Icon } from "./ui/Icon";
 
 // Кольцо прогресса вокруг превью
 function ProgressRing({ done, total }: { done: number; total: number }) {
@@ -51,6 +55,35 @@ export function ProjectList() {
   const [items, setItems] = useState<ProjectSummary[] | null>(null);
   // Ошибка
   const [error, setError] = useState("");
+  // Идёт открытие файла проекта
+  const [importing, setImporting] = useState(false);
+  // Переходы между страницами
+  const router = useRouter();
+
+  // Открыть файл проекта: новый портрет со всем прогрессом → в студию
+  const openFile = async (file: File | undefined, input: HTMLInputElement) => {
+    // Файл не выбран
+    if (!file) return;
+    // Идёт открытие
+    setImporting(true);
+    // Сбросить ошибку
+    setError("");
+    // Запрос может не пройти
+    try {
+      // Отправляем файл
+      const project = await api.importFile(file, file.name);
+      // В студию нового портрета
+      router.push(routes.project(project.id));
+    // Ошибка (испорченный файл и т. п.)
+    } catch (e) {
+      // Текст
+      setError(e instanceof ApiError ? e.message : "Не удалось открыть файл проекта.");
+      // Можно выбрать другой файл
+      setImporting(false);
+    }
+    // Тот же файл можно выбрать ещё раз
+    input.value = "";
+  };
 
   // Загрузить список
   const load = useCallback(async () => {
@@ -79,8 +112,33 @@ export function ProjectList() {
   return (
     // Раздел
     <section className="projects" aria-labelledby="projects-title">
-      {/* Заголовок */}
-      <h2 id="projects-title">Мои портреты</h2>
+      {/* Заголовок и «Открыть файл проекта» */}
+      <div className="projects-head">
+        {/* Заголовок */}
+        <h2 id="projects-title">Мои портреты</h2>
+        {/* Кнопка-подпись к скрытому полю файла */}
+        <label className="btn secondary small" data-testid="import-label">
+          {/* Значок */}
+          <Icon name="upload" size={16} />
+          {/* Надпись */}
+          {importing ? "Открываем…" : "Открыть файл .nitegraf"}
+          {/* Скрытое поле выбора файла */}
+          <input
+            // Тип
+            type="file"
+            // Только файлы проекта (и JSON — на телефоне расширение могут не знать)
+            accept=".nitegraf,application/json"
+            // Спрятано, нажимают на подпись
+            className="visually-hidden"
+            // Метка для тестов
+            data-testid="import-input"
+            // Пока открываем — нельзя
+            disabled={importing}
+            // Выбран файл
+            onChange={(e) => void openFile(e.target.files?.[0], e.target)}
+          />
+        </label>
+      </div>
       {/* Ошибка с кнопкой «Повторить» */}
       {error && (
         // Блок ошибки

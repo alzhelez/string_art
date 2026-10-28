@@ -215,6 +215,22 @@ function StudioPageInner() {
     setTimeout(() => setDownloading(false), 1500);
   };
 
+  // Сохранить файл проекта .nitegraf (для другого компьютера или телефона)
+  const exportFile = async () => {
+    // Сначала сохраняем изменения — в файл попадёт актуальное
+    await flush();
+    // Временная ссылка
+    const a = document.createElement("a");
+    // Адрес файла (имя задаёт бэкенд: «<название>.nitegraf»)
+    a.href = api.exportUrl(project.id);
+    // В документ
+    document.body.appendChild(a);
+    // «Нажать»
+    a.click();
+    // Убрать
+    a.remove();
+  };
+
   // Удалить портрет
   const remove = async () => {
     // Спросить подтверждение
@@ -539,6 +555,22 @@ function StudioPageInner() {
               // Цвет доски
               boardColor={multi ? boardColor(project) : undefined}
             />
+          </Section>
+
+          {/* Секция «Перенос» */}
+          <Section title="Перенос">
+            {/* Пояснение */}
+            <p className="hint">
+              Файл проекта хранит схему всех нитей, прогресс, время плетения и фото. Откройте его на другом компьютере или
+              в телефоне: «Мои портреты» → «Открыть файл .nitegraf».
+            </p>
+            {/* Кнопка */}
+            <button type="button" className="btn secondary small" onClick={() => void exportFile()} data-testid="export-project">
+              {/* Значок */}
+              <Icon name="download" size={18} />
+              {/* Надпись */}
+              Сохранить файл проекта
+            </button>
           </Section>
 
           {/* Секция «Фото» */}
