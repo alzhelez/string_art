@@ -1,23 +1,45 @@
+# Файлы, которые git не должен добавлять в репозиторий
 # Python
+# Скомпилированные файлы Python
 __pycache__/
+# Кэш pytest
 .pytest_cache/
+# Виртуальное окружение Python
 .venv/
+# Рабочая база данных портретов
 backend/data/
 # Node / Next
+# Установленные пакеты Node.js
 frontend/node_modules/
+# Сборка и кэш Next.js
 frontend/.next/
+# Файл типов, который Next.js создаёт сам
 frontend/next-env.d.ts
+# Кэш инкрементальной проверки TypeScript
 frontend/*.tsbuildinfo
+# Результаты прогонов Playwright
 frontend/test-results/
+# HTML-отчёт Playwright
 frontend/playwright-report/
 # Автотесты
+# Сборка Maven (Java)
 autotests/java/target/
+# Сборка .NET (C#)
 autotests/csharp/bin/
+# Промежуточные файлы .NET
 autotests/csharp/obj/
+# Служебные файлы ассистента разработки
 frontend/AGENTS.md
+# То же
 frontend/CLAUDE.md
 # Десктопная сборка
+# Статическая сборка фронтенда
 frontend/out/
+# Результат PyInstaller и установщик
 /dist/
+# Промежуточные файлы PyInstaller
 /build/
+# Файл версии пишет сборка — в репозитории не храним
 backend/app/_version.txt
+# Данные покрытия pytest-cov (pytest --cov) — у каждого свои, в репозиторий не кладём
+.coverage

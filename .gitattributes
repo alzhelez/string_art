@@ -1,5 +1,11 @@
+# Как git хранит концы строк и какие файлы двоичные
+# .bat — всегда CRLF (Windows иначе может неправильно разобрать скрипт)
 *.bat text eol=crlf
+# .sh — всегда LF (иначе bash на Linux/macOS споткнётся о \r)
 *.sh text eol=lf
+# Сценарий Inno Setup — CRLF, как принято в Windows
 *.iss text eol=crlf
+# Значок — двоичный файл, не трогать концы строк
 *.ico binary
+# Модель нейросети — двоичный файл
 *.onnx binary

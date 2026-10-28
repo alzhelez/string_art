@@ -1,4 +1,9 @@
+# Зависимости для разработки и тестов: pip install -r requirements-dev.txt
+# Сначала — все основные зависимости
 -r requirements.txt
+# pytest — запуск автотестов
 pytest>=8.2
+# httpx — HTTP-клиент, на котором работает TestClient FastAPI
 httpx>=0.27
+# pypdf — тесты читают созданные PDF и проверяют страницы и текст
 pypdf>=4.2

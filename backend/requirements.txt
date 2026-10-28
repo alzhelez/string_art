@@ -1,7 +1,15 @@
+# Зависимости бэкенда. Установка: pip install -r requirements.txt
+# FastAPI — веб-фреймворк для HTTP API
 fastapi>=0.115
+# uvicorn — сервер, который запускает FastAPI ([standard] — быстрые циклы событий и WebSocket)
 uvicorn[standard]>=0.30
+# Разбор форм multipart/form-data — нужен для загрузки файлов
 python-multipart>=0.0.9
+# NumPy — быстрые вычисления над массивами (алгоритм, подготовка фото)
 numpy>=1.26
+# Pillow — открытие, обрезка и сохранение картинок
 pillow>=10.3
+# ReportLab — создание PDF (инструкция и шаблон разметки)
 reportlab>=4.2
+# OpenCV без графического интерфейса: поиск лица, размытие, чистка маски
 opencv-python-headless>=4.9,<5  # поиск лица (в OpenCV 5 убрали каскады Хаара)

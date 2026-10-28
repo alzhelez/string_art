@@ -1,105 +1,182 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Описание проекта Maven: пространства имён и схема POM (строки атрибутов ниже относятся к этому же тегу) -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <!-- Версия формата POM — всегда 4.0.0 -->
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Группа — как пакет Java -->
     <groupId>ru.stringart</groupId>
+    <!-- Имя артефакта -->
     <artifactId>string-art-api-tests</artifactId>
+    <!-- Версия тестового проекта -->
     <version>1.0.0</version>
+    <!-- Название для отчётов -->
     <name>String Art API tests (TestNG + RestAssured + Allure)</name>
 
+    <!-- Общие переменные: -->
     <properties>
+        <!-- Компилируем под Java 17 -->
         <maven.compiler.release>17</maven.compiler.release>
+        <!-- Исходники в UTF-8 — в тестах русский текст -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Версия TestNG — запускатель тестов -->
         <testng.version>7.10.2</testng.version>
+        <!-- Версия RestAssured — HTTP-запросы и проверки -->
         <rest-assured.version>5.5.0</rest-assured.version>
+        <!-- Версия AssertJ — читаемые проверки -->
         <assertj.version>3.26.3</assertj.version>
+        <!-- Версия Allure — отчёт -->
         <allure.version>2.29.0</allure.version>
+        <!-- Версия PDFBox — чтение PDF -->
         <pdfbox.version>3.0.3</pdfbox.version>
+        <!-- Версия AspectJ — нужна Allure для шагов -->
         <aspectj.version>1.9.22.1</aspectj.version>
         <!-- переопределяется: mvn test -Dapi.baseUrl=http://host:8000 -->
+        <!-- Адрес бэкенда по умолчанию -->
         <api.baseUrl>http://127.0.0.1:8000</api.baseUrl>
     </properties>
 
+    <!-- Зависимости (все только для тестов): -->
     <dependencies>
+        <!-- TestNG -->
         <dependency>
+            <!-- группа -->
             <groupId>org.testng</groupId>
+            <!-- артефакт -->
             <artifactId>testng</artifactId>
+            <!-- версия -->
             <version>${testng.version}</version>
+            <!-- только для тестов -->
             <scope>test</scope>
         </dependency>
+        <!-- RestAssured -->
         <dependency>
+            <!-- группа -->
             <groupId>io.rest-assured</groupId>
+            <!-- артефакт -->
             <artifactId>rest-assured</artifactId>
+            <!-- версия -->
             <version>${rest-assured.version}</version>
+            <!-- только для тестов -->
             <scope>test</scope>
         </dependency>
         <!-- RestAssured сериализует Map в JSON через Jackson -->
+        <!-- Jackson -->
         <dependency>
+            <!-- группа -->
             <groupId>com.fasterxml.jackson.core</groupId>
+            <!-- артефакт -->
             <artifactId>jackson-databind</artifactId>
+            <!-- версия -->
             <version>2.18.0</version>
+            <!-- только для тестов -->
             <scope>test</scope>
         </dependency>
+        <!-- AssertJ -->
         <dependency>
+            <!-- группа -->
             <groupId>org.assertj</groupId>
+            <!-- артефакт -->
             <artifactId>assertj-core</artifactId>
+            <!-- версия -->
             <version>${assertj.version}</version>
+            <!-- только для тестов -->
             <scope>test</scope>
         </dependency>
+        <!-- Allure для TestNG -->
         <dependency>
+            <!-- группа -->
             <groupId>io.qameta.allure</groupId>
+            <!-- артефакт -->
             <artifactId>allure-testng</artifactId>
+            <!-- версия -->
             <version>${allure.version}</version>
+            <!-- только для тестов -->
             <scope>test</scope>
         </dependency>
+        <!-- Allure для RestAssured — запросы попадают в отчёт -->
         <dependency>
+            <!-- группа -->
             <groupId>io.qameta.allure</groupId>
+            <!-- артефакт -->
             <artifactId>allure-rest-assured</artifactId>
+            <!-- версия -->
             <version>${allure.version}</version>
+            <!-- только для тестов -->
             <scope>test</scope>
         </dependency>
+        <!-- PDFBox — проверяем страницы и текст PDF -->
         <dependency>
+            <!-- группа -->
             <groupId>org.apache.pdfbox</groupId>
+            <!-- артефакт -->
             <artifactId>pdfbox</artifactId>
+            <!-- версия -->
             <version>${pdfbox.version}</version>
+            <!-- только для тестов -->
             <scope>test</scope>
         </dependency>
     </dependencies>
 
+    <!-- Сборка -->
     <build>
+        <!-- Плагины: -->
         <plugins>
+            <!-- Surefire — запускает тесты при mvn test -->
             <plugin>
+                <!-- группа -->
                 <groupId>org.apache.maven.plugins</groupId>
+                <!-- артефакт -->
                 <artifactId>maven-surefire-plugin</artifactId>
+                <!-- версия -->
                 <version>3.5.1</version>
+                <!-- Настройки: -->
                 <configuration>
+                    <!-- какие наборы тестов запускать — -->
                     <suiteXmlFiles>
+                        <!-- — наш testng.xml -->
                         <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
                     </suiteXmlFiles>
+                    <!-- Свойства, которые видят тесты: -->
                     <systemPropertyVariables>
+                        <!-- адрес бэкенда -->
                         <api.baseUrl>${api.baseUrl}</api.baseUrl>
+                        <!-- папка фикстур -->
                         <fixtures.dir>${project.basedir}/../fixtures</fixtures.dir>
+                        <!-- куда Allure пишет результаты -->
                         <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
                     </systemPropertyVariables>
+                    <!-- Аргументы JVM: агент AspectJ из локального репозитория Maven — без него Allure не видит шаги -->
                     <argLine>
                         -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
                     </argLine>
                 </configuration>
+                <!-- Зависимости самого плагина: -->
                 <dependencies>
+                    <!-- AspectJ — -->
                     <dependency>
+                        <!-- группа -->
                         <groupId>org.aspectj</groupId>
+                        <!-- артефакт -->
                         <artifactId>aspectjweaver</artifactId>
+                        <!-- версия -->
                         <version>${aspectj.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>
+            <!-- Плагин Allure — mvn allure:serve открывает отчёт -->
             <plugin>
+                <!-- группа -->
                 <groupId>io.qameta.allure</groupId>
+                <!-- артефакт -->
                 <artifactId>allure-maven</artifactId>
+                <!-- версия -->
                 <version>2.13.0</version>
+                <!-- Настройки: -->
                 <configuration>
+                    <!-- версия Allure для отчёта -->
                     <reportVersion>${allure.version}</reportVersion>
                 </configuration>
             </plugin>

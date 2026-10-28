@@ -1,83 +1,159 @@
 # Автотесты на GitHub Actions: запускаются на каждый push и pull request.
 # Результаты — во вкладке Actions репозитория. Allure-результаты Java лежат в артефактах.
+# Название процесса во вкладке Actions
 name: tests
 
+# Когда запускать
 on:
+  # При каждой отправке коммитов в любую ветку
   push:
+  # При каждом pull request
   pull_request:
+  # И вручную кнопкой «Run workflow»
   workflow_dispatch:
 
+# Задачи (выполняются параллельно на разных машинах)
 jobs:
+  # Тесты бэкенда
   backend:
+    # Название задачи в интерфейсе
     name: Python · pytest
+    # Машина с последней Ubuntu
     runs-on: ubuntu-latest
+    # Шаги задачи
     steps:
+      # Скачать код репозитория
       - uses: actions/checkout@v4
+      # Установить Python
       - uses: actions/setup-python@v5
+        # Версия 3.12, кэшировать пакеты pip между запусками
         with: { python-version: "3.12", cache: pip }
+      # Зависимости для тестов
       - run: pip install -r backend/requirements-dev.txt
+      # Запуск pytest
       - run: cd backend && python -m pytest
 
+  # Юнит-тесты и сборка фронтенда
   frontend:
+    # Название
     name: TypeScript · Vitest + сборка
+    # Машина
     runs-on: ubuntu-latest
+    # Шаги
     steps:
+      # Код
       - uses: actions/checkout@v4
+      # Node.js
       - uses: actions/setup-node@v4
+        # Версия 22, кэш npm по lock-файлу фронтенда
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      # Установка, проверка типов, юнит-тесты и боевая сборка
       - run: cd frontend && npm ci && npm run typecheck && npm test && npm run build
 
+  # Сквозные тесты в настоящем браузере
   e2e:
+    # Название
     name: Playwright · UI + API
+    # Машина
     runs-on: ubuntu-latest
+    # Шаги
     steps:
+      # Код
       - uses: actions/checkout@v4
+      # Python — Playwright сам поднимает бэкенд
       - uses: actions/setup-python@v5
+        # Версия и кэш
         with: { python-version: "3.12", cache: pip }
+      # Node.js — для фронтенда и Playwright
       - uses: actions/setup-node@v4
+        # Версия и кэш
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      # Зависимости бэкенда
       - run: pip install -r backend/requirements.txt
+      # Зависимости фронтенда и браузер Chromium со системными библиотеками
       - run: cd frontend && npm ci && npx playwright install --with-deps chromium
+      # Запуск Playwright
       - run: cd frontend && npx playwright test
+        # CI=true включает повтор упавших тестов и отчёты; PYTHON — как называется Python на этой машине
         env: { CI: "true", PYTHON: python }
+      # Сохранить HTML-отчёт Playwright
       - uses: actions/upload-artifact@v4
+        # Даже если тесты упали — особенно тогда
         if: always()
+        # Имя артефакта и папка
         with: { name: playwright-report, path: frontend/playwright-report }
 
+  # Чёрный ящик: API-тесты на четырёх языках
   api:
+    # Название с языком из матрицы
     name: API-тесты · ${{ matrix.lang }}
+    # Машина
     runs-on: ubuntu-latest
+    # Стратегия запуска
     strategy:
+      # Если упал один язык, остальные доводим до конца
       fail-fast: false
+      # Матрица: по задаче на каждый язык
       matrix:
+        # Языки
         lang: [java, go, ruby, csharp]
+    # Адрес бэкенда для всех тестов
     env: { STRINGART_API: "http://127.0.0.1:8000" }
+    # Шаги
     steps:
+      # Код
       - uses: actions/checkout@v4
+      # Python для бэкенда
       - uses: actions/setup-python@v5
+        # Версия и кэш
         with: { python-version: "3.12", cache: pip }
+      # Поднять бэкенд в фоне
       - name: Запуск бэкенда
+        # Наш скрипт ждёт, пока сервер ответит
         run: sh autotests/ci/start-backend.sh
+      # Java: установить JDK
       - if: matrix.lang == 'java'
+        # Действие установки Java
         uses: actions/setup-java@v4
+        # Temurin 21 с кэшем Maven
         with: { distribution: temurin, java-version: "21", cache: maven }
+      # Java: запуск тестов TestNG через Maven
       - if: matrix.lang == 'java'
+        # -B — без интерактива; адрес API передаём системным свойством
         run: cd autotests/java && mvn -B test -Dapi.baseUrl=$STRINGART_API
+      # Java: сохранить результаты Allure, даже если тесты упали
       - if: matrix.lang == 'java' && always()
+        # Загрузка артефакта
         uses: actions/upload-artifact@v4
+        # Имя и папка
         with: { name: allure-results, path: autotests/java/target/allure-results }
+      # Go: установить Go
       - if: matrix.lang == 'go'
+        # Действие установки Go
         uses: actions/setup-go@v5
+        # Версия
         with: { go-version: "1.22" }
+      # Go: тесты
       - if: matrix.lang == 'go'
+        # -v — подробный вывод, ./... — все пакеты
         run: cd autotests/go && go test -v ./...
+      # Ruby: установить Ruby
       - if: matrix.lang == 'ruby'
+        # Действие установки Ruby
         uses: ruby/setup-ruby@v1
+        # Версия
         with: { ruby-version: "3.3" }
+      # Ruby: тесты Minitest
       - if: matrix.lang == 'ruby'
+        # Запуск файла с тестами
         run: ruby autotests/ruby/api_test.rb
+      # C#: установить .NET
       - if: matrix.lang == 'csharp'
+        # Действие установки .NET
         uses: actions/setup-dotnet@v4
+        # Версия
         with: { dotnet-version: "8.0.x" }
+      # C#: тесты xUnit
       - if: matrix.lang == 'csharp'
+        # Сборка и запуск
         run: cd autotests/csharp && dotnet test

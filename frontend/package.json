@@ -1,4 +1,43 @@
 {
+  "//": {
+    "about": "JSON не поддерживает комментарии, поэтому пояснения собраны в поле «//» — npm его игнорирует",
+    "name": "Имя пакета (внутреннее, не публикуется)",
+    "version": "Версия фронтенда",
+    "private": "true — защита от случайной публикации в npm",
+    "scripts": {
+      "dev": "Разработка: сервер Next.js на порту 3000 с перезагрузкой при изменениях (сборщик webpack)",
+      "build": "Боевая сборка для запуска сервером Node.js",
+      "start": "Запуск боевой сборки на порту 3000",
+      "typecheck": "Проверка типов TypeScript без сборки",
+      "test": "Юнит-тесты Vitest один раз",
+      "test:watch": "Юнит-тесты в режиме наблюдения — перезапуск при изменении файлов",
+      "test:coverage": "Юнит-тесты с отчётом о покрытии кода (папка coverage/)",
+      "test:e2e": "Сквозные тесты Playwright (сами поднимают бэкенд и фронтенд)",
+      "build:desktop": "Статическая сборка в папку out/ для программы для Windows"
+    },
+    "dependencies": {
+      "@fontsource/golos-text": "Шрифт текста Golos (лежит в пакете — работает без интернета)",
+      "@fontsource/unbounded": "Шрифт заголовков Unbounded",
+      "next": "Фреймворк Next.js: страницы, маршруты, сборка",
+      "react": "Библиотека интерфейса React",
+      "react-dom": "React для браузера"
+    },
+    "devDependencies": {
+      "@playwright/test": "Сквозные тесты в настоящем браузере",
+      "@testing-library/jest-dom": "Удобные проверки DOM: toBeInTheDocument, toHaveTextContent…",
+      "@testing-library/react": "Рендер компонентов в юнит-тестах",
+      "@testing-library/user-event": "Имитация действий пользователя (клики, ввод)",
+      "@types/node": "Типы Node.js",
+      "@types/react": "Типы React",
+      "@types/react-dom": "Типы React DOM",
+      "@vitejs/plugin-react": "Поддержка JSX в Vitest",
+      "@vitest/coverage-v8": "Подсчёт покрытия кода тестами",
+      "cross-env": "Переменные окружения в скриптах одинаково на Windows и Linux",
+      "jsdom": "Имитация браузера для юнит-тестов",
+      "typescript": "Компилятор и проверка типов",
+      "vitest": "Запуск юнит-тестов"
+    }
+  },
   "name": "string-art-frontend",
   "version": "1.0.0",
   "private": true,
@@ -10,7 +49,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "build:desktop": "cross-env STRINGART_DESKTOP=1 next build --webpack"
+    "build:desktop": "cross-env STRINGART_DESKTOP=1 next build --webpack",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fontsource/golos-text": "^5.3.0",
@@ -28,6 +68,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "cross-env": "^7.0.3",
     "jsdom": "^30.1.3",
     "typescript": "^7.0.2",

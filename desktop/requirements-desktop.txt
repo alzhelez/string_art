@@ -1,5 +1,9 @@
 # Сборка десктопной версии (Windows .exe). Пути -r — относительно этого файла.
+# Все зависимости бэкенда
 -r ../backend/requirements.txt
+# Нейросеть удаления фона (в программе она есть всегда)
 onnxruntime>=1.17
+# Окно приложения на системном WebView (Edge WebView2 в Windows)
 pywebview>=5.3
+# Упаковка Python-программы в .exe
 pyinstaller>=6.10

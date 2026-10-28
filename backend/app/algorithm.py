@@ -12,124 +12,220 @@
 просто берёт префикс последовательности, без пересчёта.
 """
 
+# Современная запись типов (np.ndarray | None) в любой версии Python 3
 from __future__ import annotations
 
+# threading.Lock — чтобы два одновременных запроса не строили кэш линий дважды
 import threading
+# dataclass — компактное описание структуры с полями
 from dataclasses import dataclass
 
+# numpy — быстрые вычисления над массивами пикселей
 import numpy as np
 
+# Параметры алгоритма из общих настроек
 from .config import (
+    # Сколько «темноты» снимает одна нить
     LINE_WEIGHT,
+    # Сколько линий считаем (5000)
     MAX_LINES,
+    # Минимальное расстояние между гвоздями одной нити
     MIN_NAIL_GAP,
+    # Размер рабочей картинки в пикселях
     PROCESSING_SIZE,
+    # Стартовый гвоздь (A1)
     START_NAIL,
+    # Число гвоздей (240)
     TOTAL_NAILS,
 )
+# Расстояние между гвоздями по кругу и координаты гвоздя
 from .geometry import nail_gap, nail_xy
 
 
+# Неизменяемая структура: после построения кэш никто не правит
 @dataclass(frozen=True)
+# Все нити, которые можно протянуть из одного гвоздя, в «упакованном» виде
 class NailLines:
     """Все линии из одного гвоздя, упакованные для np.add.reduceat."""
 
+    # Номера гвоздей, к которым можно протянуть нить из этого гвоздя
     targets: np.ndarray  # гвозди, куда можно тянуть нить
+    # С какой позиции в массиве pixels начинаются пиксели каждой линии
     offsets: np.ndarray  # начало пикселей каждой линии в pixels
+    # Сколько пикселей у каждой линии (для подсчёта среднего)
     counts: np.ndarray  # число пикселей каждой линии
+    # Пиксели всех линий, записанные подряд одним массивом (так numpy считает быстрее)
     pixels: np.ndarray  # плоские индексы пикселей всех линий подряд
 
 
+# Какие пиксели картинки пересекает прямая нить между гвоздями a и b
 def line_pixels(a: int, b: int, size: int) -> np.ndarray:
     """Плоские индексы пикселей прямой между гвоздями a и b."""
+    # Радиус круга гвоздей в пикселях (чуть меньше половины, чтобы не выйти за край)
     r = size / 2 - 0.5
+    # Центр картинки
     c = (size - 1) / 2
+    # Координаты первого гвоздя
     x0, y0 = nail_xy(a, r, c, c)
+    # Координаты второго гвоздя
     x1, y1 = nail_xy(b, r, c, c)
+    # Число точек на отрезке: длина в пикселях + 1, чтобы не пропустить ни одного пикселя
     n = int(np.ceil(np.hypot(x1 - x0, y1 - y0))) + 1
+    # X-координаты равномерно по отрезку, округлённые до целого пикселя и не выходящие за край
     xs = np.clip(np.rint(np.linspace(x0, x1, n)), 0, size - 1).astype(np.int32)
+    # То же для Y-координат
     ys = np.clip(np.rint(np.linspace(y0, y1, n)), 0, size - 1).astype(np.int32)
+    # Переводим (x, y) в «плоский» индекс одномерного массива: строка × ширина + столбец
     flat = ys * size + xs
+    # Маска «оставить пиксель»: изначально оставляем все
     keep = np.ones(len(flat), dtype=bool)
+    # Убираем повторы подряд — один и тот же пиксель не должен считаться дважды
     keep[1:] = flat[1:] != flat[:-1]
+    # Возвращаем уникальные (подряд) пиксели линии
     return flat[keep]
 
 
+# Кэш готовых линий: ключ — (размер картинки, минимальный зазор)
 _cache: dict[tuple[int, int], list[NailLines]] = {}
+# Замок, чтобы кэш строился один раз даже при параллельных запросах
 _cache_lock = threading.Lock()
 
 
+# Заранее считаем пиксели всех возможных нитей — потом алгоритм только берёт готовое
 def build_line_cache(size: int = PROCESSING_SIZE, min_gap: int = MIN_NAIL_GAP) -> list[NailLines]:
     """Предрасчёт всех линий. Делается один раз на процесс (~1–2 с)."""
+    # Ключ кэша для этих параметров
     key = (size, min_gap)
+    # Пока строим — другие потоки ждут
     with _cache_lock:
+        # Уже строили — сразу отдаём
         if key in _cache:
+            # Готовый результат из кэша
             return _cache[key]
+        # Словарь «пара гвоздей → пиксели линии»; линия a→b та же, что b→a, поэтому храним один раз
         pair: dict[tuple[int, int], np.ndarray] = {}
+        # Перебираем первый гвоздь
         for a in range(TOTAL_NAILS):
+            # И второй — только больше первого, чтобы не считать пару дважды
             for b in range(a + 1, TOTAL_NAILS):
+                # Слишком близкие гвозди пропускаем
                 if nail_gap(a, b) >= min_gap:
+                    # Сохраняем пиксели этой линии
                     pair[(a, b)] = line_pixels(a, b, size)
+        # Итог: по одному NailLines на каждый гвоздь
         result = []
+        # Для каждого гвоздя собираем все его линии
         for a in range(TOTAL_NAILS):
+            # Куда можно тянуть нить из гвоздя a
             targets = [b for b in range(TOTAL_NAILS) if b != a and nail_gap(a, b) >= min_gap]
+            # Пиксели этих линий (ключ всегда «меньший, больший»)
             lines = [pair[(min(a, b), max(a, b))] for b in targets]
+            # Длины линий в пикселях
             counts = np.array([len(l) for l in lines], dtype=np.int64)
+            # Начало каждой линии в общем массиве: 0, len1, len1+len2, …
             offsets = np.concatenate(([0], np.cumsum(counts)[:-1])).astype(np.int64)
+            # Добавляем упакованные линии гвоздя a
             result.append(
+                # Структура со всеми линиями гвоздя
                 NailLines(
+                    # Целевые гвозди
                     targets=np.array(targets, dtype=np.int32),
+                    # Смещения линий
                     offsets=offsets,
+                    # Длины линий
                     counts=counts,
+                    # Все пиксели подряд одним массивом
                     pixels=np.concatenate(lines),
                 )
             )
+        # Запоминаем в кэше для следующих вызовов
         _cache[key] = result
+        # Отдаём результат
         return result
 
 
+# Главная функция: из карты темноты получаем порядок гвоздей
 def generate_sequence(
+    # Карта темноты: 0 — белое, 1 — чёрное; квадрат size × size
     darkness: np.ndarray,
+    # Сколько линий построить
     max_lines: int = MAX_LINES,
+    # Сколько темноты снимает одна нить
     line_weight: float = LINE_WEIGHT,
+    # С какого гвоздя начинать
     start: int = START_NAIL,
+    # Минимальное расстояние между гвоздями одной нити
     min_gap: int = MIN_NAIL_GAP,
+    # Необязательная карта важности (например, лицо важнее фона)
     importance: np.ndarray | None = None,
+# Возвращает список номеров гвоздей
 ) -> list[int]:
     """Последовательность гвоздей длиной max_lines + 1 (первый — стартовый).
 
     importance — карта весов того же размера (1 — обычная важность, 2 — вдвое важнее).
     """
+    # Сторона картинки
     size = darkness.shape[0]
+    # Картинка должна быть квадратной — иначе круг гвоздей не впишется
     if darkness.shape != (size, size):
+        # Понятная ошибка
         raise ValueError("Карта темноты должна быть квадратной")
+    # Карта важности, если есть, должна быть того же размера
     if importance is not None and importance.shape != darkness.shape:
+        # Иначе веса не совпадут с пикселями
         raise ValueError("Карта важности должна совпадать по размеру с картой темноты")
+    # Хотя бы одна линия
     if max_lines < 1:
+        # Ноль или минус — ошибка вызова
         raise ValueError("max_lines должен быть >= 1")
+    # Берём (или строим) готовые линии для этого размера
     cache = build_line_cache(size, min_gap)
+    # Рабочая копия карты темноты в одну строку — её будем «стирать» нитями
     work = darkness.astype(np.float32).ravel().copy()
+    # Веса пикселей в одну строку (или None, если важность не задана)
     weight = None if importance is None else importance.astype(np.float32).ravel()
+    # Таблица «эта пара гвоздей уже соединена»
     used = np.zeros((TOTAL_NAILS, TOTAL_NAILS), dtype=bool)
+    # Последовательность начинается со стартового гвоздя
     sequence = [start]
+    # Текущий гвоздь
     current = start
+    # Повторяем для каждой линии
     for _ in range(max_lines):
+        # Все линии из текущего гвоздя
         lines = cache[current]
+        # Темнота под каждым пикселем этих линий
         values = work[lines.pixels]
+        # Если задана важность — умножаем темноту на вес пикселя
         if weight is not None:
+            # Важные места (лицо) дают линии больше «очков»
             values = values * weight[lines.pixels]
+        # Сумма темноты вдоль каждой линии (reduceat суммирует куски массива по смещениям)
         sums = np.add.reduceat(values, lines.offsets)
+        # Средняя темнота линии — длинные линии не получают преимущества просто за длину
         scores = sums / lines.counts
         # Одну и ту же линию дважды не тянем — иначе алгоритм «залипает».
+        # Уже использованным линиям ставим минус бесконечность
         scores[used[current, lines.targets]] = -np.inf
+        # Номер лучшей линии — с наибольшей средней темнотой
         best = int(np.argmax(scores))
+        # Если все линии заняты — останавливаемся
         if not np.isfinite(scores[best]):
+            # Выход из цикла
             break  # все линии из гвоздя уже использованы (на практике не бывает)
+        # Гвоздь, к которому тянем нить
         nxt = int(lines.targets[best])
+        # Где в общем массиве начинаются пиксели лучшей линии
         start_px = lines.offsets[best]
+        # Пиксели лучшей линии
         px = lines.pixels[start_px : start_px + lines.counts[best]]
+        # «Закрашиваем» их: темноты там стало меньше, следующая нить пойдёт в другое место
         work[px] -= line_weight
+        # Отмечаем пару гвоздей использованной в обе стороны
         used[current, nxt] = used[nxt, current] = True
+        # Записываем следующий гвоздь в последовательность
         sequence.append(nxt)
+        # Переходим к нему
         current = nxt
+    # Готовая последовательность гвоздей
     return sequence

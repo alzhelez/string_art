@@ -2,2415 +2,4093 @@
    холодный графит. Один яркий цвет — кобальтовая «нить» текущего действия.
    Фирменный мотив — едва заметная нитяная графика на фоне. Две темы. */
 
+/* Светлая тема (по умолчанию) … */
 :root,
+/* … и явно выбранная светлая тема */
 :root[data-theme="light"] {
+  /* Переменная темы: цвет фона страницы */
   --bg: #e7eaef;
+  /* Переменная темы: цвет карточек и панелей */
   --surface: #ffffff;
+  /* Переменная темы: второй, чуть более тёмный фон (поля, подложки) */
   --surface-2: #f4f6f9;
+  /* Переменная темы: третий фон (дорожки ползунков, неактивное) */
   --surface-3: #e8ecf1;
+  /* Переменная темы: цвет тонких рамок */
   --border: #dde2e9;
+  /* Переменная темы: цвет заметных рамок (поля ввода) */
   --border-strong: #c3cad4;
+  /* Переменная темы: основной цвет текста */
   --text: #12151b;
+  /* Переменная темы: второстепенный текст (подписи, пояснения) */
   --text-2: #586172;
+  /* Переменная темы: цвет фоновой нитяной картины */
   --motif: #12151b;
+  /* Переменная темы: насколько видна фоновая нитяная картина */
   --motif-opacity: 0.06;
+  /* Переменная темы: полупрозрачный фон «стекла» (шапка, плавающие панели) */
   --glass: rgba(255, 255, 255, 0.72);
+  /* Переменная темы: главный акцентный цвет — синяя «нить» текущего действия */
   --accent: #3550f0;
+  /* Переменная темы: акцент для текста и ссылок (контрастнее на фоне) */
   --accent-ink: #2338c4;
+  /* Переменная темы: бледный акцент — подложки выбранных элементов */
   --accent-soft: #e7ebff;
+  /* Переменная темы: цвет текста на акцентной кнопке */
   --on-accent: #ffffff;
+  /* Переменная темы: цвет ошибок и удаления */
   --danger: #c22b23;
+  /* Переменная темы: бледная подложка ошибок */
   --danger-soft: #fdecea;
+  /* Переменная темы: цвет успеха */
   --success: #1e8a4c;
+  /* Переменная темы: фон сцены с доской — мягкий радиальный градиент */
   --stage: radial-gradient(120% 90% at 50% 40%, #ffffff 0%, #f1f3f6 55%, #e6e9ee 100%);
+  /* Переменная темы: лёгкая тень карточек */
   --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px -16px rgba(16, 24, 40, 0.22);
+  /* Переменная темы: глубокая тень всплывающих элементов */
   --shadow-2: 0 24px 48px -22px rgba(16, 24, 40, 0.35);
+  /* Переменная темы: кольцо фокуса клавиатуры */
   --focus: 0 0 0 3px rgba(53, 80, 240, 0.35);
+  /* Встроенные элементы браузера (полосы прокрутки, поля) — в light теме */
   color-scheme: light;
 }
 
+/* Тёмная тема — те же переменные, другие значения */
 :root[data-theme="dark"] {
+  /* Переменная темы: цвет фона страницы */
   --bg: #0c0f14;
+  /* Переменная темы: цвет карточек и панелей */
   --surface: #151920;
+  /* Переменная темы: второй, чуть более тёмный фон (поля, подложки) */
   --surface-2: #1b2029;
+  /* Переменная темы: третий фон (дорожки ползунков, неактивное) */
   --surface-3: #232a34;
+  /* Переменная темы: цвет тонких рамок */
   --border: #262d38;
+  /* Переменная темы: цвет заметных рамок (поля ввода) */
   --border-strong: #38414e;
+  /* Переменная темы: цвет фоновой нитяной картины */
   --motif: #ffffff;
+  /* Переменная темы: насколько видна фоновая нитяная картина */
   --motif-opacity: 0.05;
+  /* Переменная темы: полупрозрачный фон «стекла» (шапка, плавающие панели) */
   --glass: rgba(21, 25, 32, 0.72);
+  /* Переменная темы: основной цвет текста */
   --text: #edf0f4;
+  /* Переменная темы: второстепенный текст (подписи, пояснения) */
   --text-2: #9aa4b2;
+  /* Переменная темы: главный акцентный цвет — синяя «нить» текущего действия */
   --accent: #7088ff;
+  /* Переменная темы: акцент для текста и ссылок (контрастнее на фоне) */
   --accent-ink: #aab8ff;
+  /* Переменная темы: бледный акцент — подложки выбранных элементов */
   --accent-soft: rgba(112, 136, 255, 0.16);
+  /* Переменная темы: цвет текста на акцентной кнопке */
   --on-accent: #0b0f1a;
+  /* Переменная темы: цвет ошибок и удаления */
   --danger: #ff6b62;
+  /* Переменная темы: бледная подложка ошибок */
   --danger-soft: rgba(255, 107, 98, 0.12);
+  /* Переменная темы: цвет успеха */
   --success: #4cc98a;
+  /* Переменная темы: фон сцены с доской — мягкий радиальный градиент */
   --stage: radial-gradient(120% 90% at 50% 40%, #232a33 0%, #171b21 60%, #12161b 100%);
+  /* Переменная темы: лёгкая тень карточек */
   --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 10px 28px -18px rgba(0, 0, 0, 0.8);
+  /* Переменная темы: глубокая тень всплывающих элементов */
   --shadow-2: 0 24px 48px -20px rgba(0, 0, 0, 0.7);
+  /* Переменная темы: кольцо фокуса клавиатуры */
   --focus: 0 0 0 3px rgba(112, 136, 255, 0.45);
+  /* Встроенные элементы браузера (полосы прокрутки, поля) — в dark теме */
   color-scheme: dark;
 }
 
+/* Общие переменные для обеих тем: шрифты, скругления, плавность */
 :root {
+  /* Переменная темы: шрифт заголовков (Unbounded) и запасные */
   --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  /* Переменная темы: шрифт текста (Golos Text) и запасные */
   --text-font: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Переменная темы: самое крупное скругление углов */
   --r-xl: 30px;
+  /* Переменная темы: крупное скругление */
   --r-lg: 22px;
+  /* Переменная темы: среднее скругление */
   --r-md: 14px;
+  /* Переменная темы: малое скругление */
   --r-sm: 10px;
+  /* Переменная темы: плавность анимаций: быстрый старт, мягкое торможение */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+/* Все элементы */
 * {
+  /* Ширина и высота включают отступы и рамку */
   box-sizing: border-box;
 }
 
+/* Корень документа */
 html {
+  /* IPhone не увеличивает шрифт сам при повороте */
   -webkit-text-size-adjust: 100%;
 }
 
+/* Тело страницы */
 body {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Минимальная высота: 100vh */
   min-height: 100vh;
+  /* Фон: var(--bg) */
   background: var(--bg);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 400 1rem/1.5 var(--text-font) */
   font: 400 1rem/1.5 var(--text-font);
+  /* Плавное изменение: background-color 0.2s var(--ease), color 0.2s var(--ease) */
   transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
 }
 
 /* Нитяная картина на фоне: огромная, бледная, уходит за край — подпись мастерской */
+/* Фоновая нитяная картина в правом верхнем углу (псевдоэлемент перед содержимым) */
 body::before {
+  /* Псевдоэлемент без текста (нужен для рисования) */
   content: "";
+  /* Закреплено относительно окна — не прокручивается */
   position: fixed;
+  /* Порядок наложения (больше — выше): 0 */
   z-index: 0;
+  /* Отступ от верха: -18vmax */
   top: -18vmax;
+  /* Отступ справа: -16vmax */
   right: -16vmax;
+  /* Ширина: 72vmax */
   width: 72vmax;
+  /* Высота: 72vmax */
   height: 72vmax;
+  /* Фон: var(--motif) */
   background: var(--motif);
+  /* Непрозрачность: var(--motif-opacity) */
   opacity: var(--motif-opacity);
+  /* Не реагирует на мышь — клики проходят сквозь */
   pointer-events: none;
+  /* Маска для Safari/Chrome (то же изображение) */
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%2312151b' stroke-width='0.8'%3E%3Ccircle cx='300' cy='300' r='290'/%3E%3Cpath d='M590 300L78 486M78 486L201 27M201 27L522 486M522 486L114 78M114 78L538 134M538 134L423 563M423 563L155 49M155 49L580 225M580 225L114 522M114 522L486 78M486 78L505 505M505 505L62 134M62 134L563 177M563 177L399 573M399 573L14 350M14 350L538 134M538 134L155 551M155 551L78 114M78 114L580 225M580 225L325 589M325 589L250 14M250 14L466 538M466 538L49 445M49 445L551 155M551 155L375 580M375 580L27 201M27 201L551 445M551 445L78 114M78 114L522 486M522 486L95 505M95 505L505 95M505 95L95 505M95 505L375 20M375 20L573 399M573 399L62 466M62 466L155 49M155 49L466 538M466 538L20 375M20 375L445 49M445 49L275 589M275 589L37 177M37 177L573 399M573 399L134 538M134 538L466 62M466 62L350 586M350 586L225 20M225 20L300 590M300 590L37 177M37 177L486 78M486 78L114 522M114 522L486 78M486 78L78 486M78 486L250 14M250 14L505 505M505 505L49 445M49 445L538 134M538 134L20 375M20 375L275 11M275 11L325 589M325 589L10 300M10 300L589 325M589 325L134 538M134 538L399 27M399 27L134 538M134 538L445 49M445 49L275 589M275 589L134 62M134 62L538 466M538 466L62 134M62 134L580 375'/%3E%3C/g%3E%3Cg fill='%2312151b'%3E%3Ccircle cx=%22590%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%22590%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%2210%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22275%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%2210%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22275%22 r=%222.2%22/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  /* Маска — по ней рисуется фоновая нитяная картина */
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%2312151b' stroke-width='0.8'%3E%3Ccircle cx='300' cy='300' r='290'/%3E%3Cpath d='M590 300L78 486M78 486L201 27M201 27L522 486M522 486L114 78M114 78L538 134M538 134L423 563M423 563L155 49M155 49L580 225M580 225L114 522M114 522L486 78M486 78L505 505M505 505L62 134M62 134L563 177M563 177L399 573M399 573L14 350M14 350L538 134M538 134L155 551M155 551L78 114M78 114L580 225M580 225L325 589M325 589L250 14M250 14L466 538M466 538L49 445M49 445L551 155M551 155L375 580M375 580L27 201M27 201L551 445M551 445L78 114M78 114L522 486M522 486L95 505M95 505L505 95M505 95L95 505M95 505L375 20M375 20L573 399M573 399L62 466M62 466L155 49M155 49L466 538M466 538L20 375M20 375L445 49M445 49L275 589M275 589L37 177M37 177L573 399M573 399L134 538M134 538L466 62M466 62L350 586M350 586L225 20M225 20L300 590M300 590L37 177M37 177L486 78M486 78L114 522M114 522L486 78M486 78L78 486M78 486L250 14M250 14L505 505M505 505L49 445M49 445L538 134M538 134L20 375M20 375L275 11M275 11L325 589M325 589L10 300M10 300L589 325M589 325L134 538M134 538L399 27M399 27L134 538M134 538L445 49M445 49L275 589M275 589L134 62M134 62L538 466M538 466L62 134M62 134L580 375'/%3E%3C/g%3E%3Cg fill='%2312151b'%3E%3Ccircle cx=%22590%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%22590%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%22589%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%22586%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%22580%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%22573%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%22563%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%22551%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%22538%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%22522%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%22505%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22486%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22466%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22445%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22423%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22399%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22375%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22350%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22325%22 r=%222.2%22/%3E%3Ccircle cx=%2210%22 cy=%22300%22 r=%222.2%22/%3E%3Ccircle cx=%2211%22 cy=%22275%22 r=%222.2%22/%3E%3Ccircle cx=%2214%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%2220%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%2227%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%2237%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%2249%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%2262%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%2278%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%2295%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22114%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22134%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22155%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22177%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22201%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22225%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22250%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22275%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22300%22 cy=%2210%22 r=%222.2%22/%3E%3Ccircle cx=%22325%22 cy=%2211%22 r=%222.2%22/%3E%3Ccircle cx=%22350%22 cy=%2214%22 r=%222.2%22/%3E%3Ccircle cx=%22375%22 cy=%2220%22 r=%222.2%22/%3E%3Ccircle cx=%22399%22 cy=%2227%22 r=%222.2%22/%3E%3Ccircle cx=%22423%22 cy=%2237%22 r=%222.2%22/%3E%3Ccircle cx=%22445%22 cy=%2249%22 r=%222.2%22/%3E%3Ccircle cx=%22466%22 cy=%2262%22 r=%222.2%22/%3E%3Ccircle cx=%22486%22 cy=%2278%22 r=%222.2%22/%3E%3Ccircle cx=%22505%22 cy=%2295%22 r=%222.2%22/%3E%3Ccircle cx=%22522%22 cy=%22114%22 r=%222.2%22/%3E%3Ccircle cx=%22538%22 cy=%22134%22 r=%222.2%22/%3E%3Ccircle cx=%22551%22 cy=%22155%22 r=%222.2%22/%3E%3Ccircle cx=%22563%22 cy=%22177%22 r=%222.2%22/%3E%3Ccircle cx=%22573%22 cy=%22201%22 r=%222.2%22/%3E%3Ccircle cx=%22580%22 cy=%22225%22 r=%222.2%22/%3E%3Ccircle cx=%22586%22 cy=%22250%22 r=%222.2%22/%3E%3Ccircle cx=%22589%22 cy=%22275%22 r=%222.2%22/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
 }
 
+/* Основная область страницы */
 .site-main {
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Порядок наложения (больше — выше): 1 */
   z-index: 1;
 }
 
+/* Ссылки */
 a {
+  /* Цвет текста: var(--accent-ink) */
   color: var(--accent-ink);
 }
 
+/* Фокус с клавиатуры (Tab): видимое кольцо, мышиный клик его не показывает */
 :focus-visible {
+  /* Без стандартной обводки фокуса (своё кольцо — через box-shadow) */
   outline: none;
+  /* Тень: var(--focus) */
   box-shadow: var(--focus);
 }
 
+/* Заголовки первого … */
 h1,
+/* … и второго уровня — общий стиль */
 h2 {
+  /* Семейство шрифта: var(--display) */
   font-family: var(--display);
+  /* Межстрочный интервал: 1.15 */
   line-height: 1.15;
+  /* Расстояние между буквами: -0.015em */
   letter-spacing: -0.015em;
+  /* Внешние отступы: 0 */
   margin: 0;
 }
 
+/* Главный заголовок страницы */
 h1 {
+  /* Насыщенность шрифта: 700 */
   font-weight: 700;
+  /* Размер шрифта: clamp(1.6rem, 2.6vw, 2.3rem) */
   font-size: clamp(1.6rem, 2.6vw, 2.3rem);
 }
 
+/* Заголовок секции */
 h2 {
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
+  /* Размер шрифта: 1.05rem */
   font-size: 1.05rem;
 }
 
+/* Скрыто с экрана, но доступно экранному диктору */
 .visually-hidden {
+  /* Положение относительно ближайшего родителя с position (!important — важнее других правил) */
   position: absolute !important;
+  /* Ширина: 1px */
   width: 1px;
+  /* Высота: 1px */
   height: 1px;
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
+  /* Обрезать до пустого прямоугольника (элемент виден только диктору) */
   clip: rect(0 0 0 0);
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
 }
 
+/* Приглушённый текст */
 .muted {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Красный текст ошибок: … */
 .text-danger,
+/* … общая ошибка формы … */
 .form-error,
+/* … и ошибка поля */
 .field-error {
+  /* Цвет текста: var(--danger) */
   color: var(--danger);
 }
 
+/* Блок ошибки формы */
 .form-error {
+  /* Внешние отступы: 0.5rem 0 */
   margin: 0.5rem 0;
 }
 
+/* Подсказка мелким текстом */
 .hint {
+  /* Внешние отступы: 0.5rem 0 0 */
   margin: 0.5rem 0 0;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Размер шрифта: 0.875rem */
   font-size: 0.875rem;
 }
 
+/* Вводный абзац крупнее обычного */
 .lead {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Размер шрифта: 1.05rem */
   font-size: 1.05rem;
+  /* Максимальная ширина: 46ch */
   max-width: 46ch;
+  /* Внешние отступы: 0 */
   margin: 0;
 }
 
 /* --- шапка --------------------------------------------------------------- */
 /* Шапка — парящая «капсула» из матового стекла */
+/* Шапка сайта — «стеклянная», прилипает к верху */
 .app-header {
+  /* Прилипает к краю при прокрутке */
   position: sticky;
+  /* Отступ от верха: 10px */
   top: 10px;
+  /* Порядок наложения (больше — выше): 20 */
   z-index: 20;
+  /* Максимальная ширина: calc(1240px - 2rem) */
   max-width: calc(1240px - 2rem);
+  /* Внешние отступы: 10px auto 0 */
   margin: 10px auto 0;
+  /* Скругление углов: 20px */
   border-radius: 20px;
+  /* Эффект «матового стекла» под элементом: saturate(1.5) blur(16px) */
   backdrop-filter: saturate(1.5) blur(16px);
+  /* То же для Safari */
   -webkit-backdrop-filter: saturate(1.5) blur(16px);
+  /* Фон: var(--glass) */
   background: var(--glass);
+  /* Рамка: 1px solid color-mix(in srgb, var(--border) 80%, transparent) */
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
+/* На экранах уже 1272 px */
 @media (max-width: 1272px) {
+  /* Шапка — без лишних отступов */
   .app-header {
+    /* Внешние отступы слева и справа: 1rem */
     margin-inline: 1rem;
   }
 }
 
+/* Содержимое шапки: логотип, меню, кнопка темы */
 .app-header-inner {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 1.5rem */
   gap: 1.5rem;
+  /* Внутренние отступы: 0.5rem 0.55rem 0.5rem 1rem */
   padding: 0.5rem 0.55rem 0.5rem 1rem;
 }
 
+/* Логотип со значком */
 .brand {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 700 1.1rem var(--display) */
   font: 700 1.1rem var(--display);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Без подчёркивания */
   text-decoration: none;
 }
 
+/* Значок логотипа */
 .brand-mark {
+  /* Ширина: 30px */
   width: 30px;
+  /* Высота: 30px */
   height: 30px;
 }
 
+/* Точки-гвозди значка */
 .brand-mark-dots {
+  /* Заливка SVG: var(--text-2) */
   fill: var(--text-2);
 }
 
+/* Нити значка */
 .brand-mark-line {
+  /* Цвет линии SVG: var(--accent) */
   stroke: var(--accent);
+  /* Толщина линии SVG: 1.6 */
   stroke-width: 1.6;
+  /* Концы линий SVG: round */
   stroke-linecap: round;
 }
 
+/* Меню разделов */
 .app-nav {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Расстояние между дочерними элементами: 0.25rem */
   gap: 0.25rem;
+  /* Внешний отступ справа: auto */
   margin-right: auto;
 }
 
+/* Пункт меню */
 .app-nav a {
+  /* Внутренние отступы: 0.4rem 0.8rem */
   padding: 0.4rem 0.8rem;
+  /* Скругление углов: 999px */
   border-radius: 999px;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Без подчёркивания */
   text-decoration: none;
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
 }
 
+/* Текущий раздел … */
 .app-nav a[aria-current="page"],
+/* … и пункт под курсором — выделены */
 .app-nav a:hover {
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
 }
 
+/* Ширина и поля основной области */
 .site-main {
+  /* Максимальная ширина: 1240px */
   max-width: 1240px;
+  /* Внешние отступы: 0 auto */
   margin: 0 auto;
+  /* Внутренние отступы: 1.5rem 1rem 5rem */
   padding: 1.5rem 1rem 5rem;
 }
 
 /* --- кнопки -------------------------------------------------------------- */
+/* Базовая кнопка */
 .btn {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Распределение дочерних элементов вдоль оси: center */
   justify-content: center;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Минимальная высота: 46px */
   min-height: 46px;
+  /* Внутренние отступы: 0.6rem 1.15rem */
   padding: 0.6rem 1.15rem;
+  /* Рамка: 1px solid transparent */
   border: 1px solid transparent;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 0.98rem/1.2 var(--text-font) */
   font: 600 0.98rem/1.2 var(--text-font);
+  /* Без подчёркивания */
   text-decoration: none;
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
+  /* Плавное изменение: (значение на следующих строках) */
   transition:
+    /* Плавно меняется: цвет фона, … */
     background-color 0.15s var(--ease),
+    /* … цвет рамки, … */
     border-color 0.15s var(--ease),
+    /* … положение (эффект нажатия) … */
     transform 0.1s var(--ease),
+    /* … и тень */
     box-shadow 0.15s var(--ease);
 }
 
+/* Нажатая кнопка чуть «утапливается» */
 .btn:active:not(:disabled) {
+  /* Преобразование (сдвиг/масштаб/поворот): translateY(1px) */
   transform: translateY(1px);
 }
 
+/* Неактивная кнопка */
 .btn:disabled {
+  /* Непрозрачность: 0.45 */
   opacity: 0.45;
+  /* Курсор «запрещено» */
   cursor: not-allowed;
 }
 
+/* Главная кнопка — синяя */
 .btn.primary {
+  /* Скругление углов: 999px */
   border-radius: 999px;
+  /* Внутренние отступы слева и справа: 1.4rem */
   padding-inline: 1.4rem;
+  /* Фон: var(--accent) */
   background: var(--accent);
+  /* Цвет текста: var(--on-accent) */
   color: var(--on-accent);
+  /* Тень: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 r… */
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.12), 0 10px 22px -12px var(--accent);
 }
 
+/* Главная кнопка под курсором */
 .btn.primary:hover:not(:disabled) {
+  /* Фон: color-mix(in srgb, var(--accent) 88%, var(--text)) */
   background: color-mix(in srgb, var(--accent) 88%, var(--text));
 }
 
+/* Второстепенная кнопка — с рамкой */
 .btn.secondary {
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Цвет рамки: var(--border-strong) */
   border-color: var(--border-strong);
+  /* Тень: 0 1px 2px rgba(16, 24, 40, 0.06) */
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
 }
 
+/* Второстепенная под курсором */
 .btn.secondary:hover:not(:disabled) {
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
 }
 
+/* Тональная кнопка — бледно-синяя (автонастройка) */
 .btn.tonal {
+  /* Фон: var(--accent-soft) */
   background: var(--accent-soft);
+  /* Цвет текста: var(--accent-ink) */
   color: var(--accent-ink);
 }
 
+/* Тональная под курсором */
 .btn.tonal:hover:not(:disabled) {
+  /* Фон: color-mix(in srgb, var(--accent-soft) 70%, var(--accent) … */
   background: color-mix(in srgb, var(--accent-soft) 70%, var(--accent) 12%);
 }
 
+/* Прозрачная кнопка */
 .btn.ghost {
+  /* Фон: прозрачный */
   background: transparent;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Прозрачная под курсором */
 .btn.ghost:hover:not(:disabled) {
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
+/* Кнопка удаления — красный текст */
 .btn.danger-ghost {
+  /* Фон: прозрачный */
   background: transparent;
+  /* Цвет текста: var(--danger) */
   color: var(--danger);
+  /* Выравнивание самого элемента поперёк оси: flex-start */
   align-self: flex-start;
 }
 
+/* Кнопка удаления под курсором */
 .btn.danger-ghost:hover {
+  /* Фон: var(--danger-soft) */
   background: var(--danger-soft);
 }
 
+/* Маленькая кнопка */
 .btn.small {
+  /* Минимальная высота: 38px */
   min-height: 38px;
+  /* Внутренние отступы: 0.4rem 0.85rem */
   padding: 0.4rem 0.85rem;
+  /* Размер шрифта: 0.9rem */
   font-size: 0.9rem;
+  /* Скругление углов: var(--r-sm) */
   border-radius: var(--r-sm);
 }
 
+/* Кнопка на всю ширину */
 .btn.wide {
+  /* Ширина: 100% */
   width: 100%;
 }
 
+/* Круглая кнопка-значок */
 .icon-btn {
+  /* Строчная сетка */
   display: inline-grid;
+  /* Выравнивание содержимого ячеек: center */
   place-items: center;
+  /* Ширина: 40px */
   width: 40px;
+  /* Высота: 40px */
   height: 40px;
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Скругление углов: 12px */
   border-radius: 12px;
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
+  /* Плавное изменение: background-color 0.15s var(--ease) */
   transition: background-color 0.15s var(--ease);
 }
 
+/* Кнопка-значок под курсором */
 .icon-btn:hover:not(:disabled) {
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
 }
 
+/* Неактивная кнопка-значок */
 .icon-btn:disabled {
+  /* Непрозрачность: 0.4 */
   opacity: 0.4;
+  /* Курсор «запрещено» */
   cursor: not-allowed;
 }
 
+/* Маленькая кнопка-значок */
 .icon-btn.small {
+  /* Ширина: 30px */
   width: 30px;
+  /* Высота: 30px */
   height: 30px;
+  /* Скругление углов: 9px */
   border-radius: 9px;
+  /* Цвет рамки: transparent */
   border-color: transparent;
+  /* Фон: прозрачный */
   background: transparent;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Кнопка, которая выглядит как ссылка */
 .link-btn {
+  /* Без рамки */
   border: 0;
+  /* Фон: прозрачный */
   background: none;
+  /* Внутренние отступы: 0 */
   padding: 0;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): inherit */
   font: inherit;
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
+  /* Цвет текста: var(--accent-ink) */
   color: var(--accent-ink);
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
+  /* Оформление текста: underline */
   text-decoration: underline;
+  /* Отступ подчёркивания от текста: 3px */
   text-underline-offset: 3px;
 }
 
 /* --- поля --------------------------------------------------------------- */
+/* Поле формы: подпись над полем */
 .field {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.4rem */
   gap: 0.4rem;
 }
 
+/* Подписи полей … */
 label,
+/* … и заголовки групп полей */
 legend {
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
 }
 
+/* Текстовые поля, … */
 input[type="text"],
+/* … числовые, … */
 input[type="number"],
+/* … поля адреса … */
 input[type="url"],
+/* … и выпадающие списки */
 select {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): inherit */
   font: inherit;
+  /* Минимальная высота: 46px */
   min-height: 46px;
+  /* Внутренние отступы: 0.55rem 0.85rem */
   padding: 0.55rem 0.85rem;
+  /* Рамка: 1px solid var(--border-strong) */
   border: 1px solid var(--border-strong);
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Плавное изменение: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease) */
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 
+/* Фокус в текстовом поле, … */
 input[type="text"]:focus,
+/* … в числовом, … */
 input[type="number"]:focus,
+/* … в поле адреса … */
 input[type="url"]:focus,
+/* … и в списке: синяя рамка и кольцо */
 select:focus {
+  /* Цвет рамки: var(--accent) */
   border-color: var(--accent);
+  /* Тень: var(--focus) */
   box-shadow: var(--focus);
+  /* Без стандартной обводки фокуса (своё кольцо — через box-shadow) */
   outline: none;
 }
 
+/* Поле с ошибкой — красная рамка */
 input[aria-invalid="true"] {
+  /* Цвет рамки: var(--danger) */
   border-color: var(--danger);
 }
 
 /* Ползунок */
+/* Блок ползунка */
 .slider-field {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.45rem */
   gap: 0.45rem;
 }
 
+/* Строка «подпись — значение» над ползунком */
 .slider-head {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Распределение дочерних элементов вдоль оси: space-between */
   justify-content: space-between;
+  /* Выравнивание дочерних элементов поперёк оси: baseline */
   align-items: baseline;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
 }
 
+/* Значение ползунка */
 .slider-head output {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 500 1rem var(--display) */
   font: 500 1rem var(--display);
+  /* Цифры одинаковой ширины — числа не «прыгают» при смене */
   font-variant-numeric: tabular-nums;
 }
 
+/* Сам ползунок (свой вид вместо стандартного) */
 .range {
+  /* Переменная темы: докуда закрашена дорожка ползунка */
   --fill: 50%;
+  /* Убрать стандартный вид элемента в Safari/Chrome */
   -webkit-appearance: none;
+  /* Убрать стандартный вид элемента */
   appearance: none;
+  /* Ширина: 100% */
   width: 100%;
+  /* Высота: 28px */
   height: 28px;
+  /* Фон: прозрачный */
   background: transparent;
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
 }
 
+/* Дорожка ползунка в Chrome/Safari: закрашена до --fill */
 .range::-webkit-slider-runnable-track {
+  /* Высота: 6px */
   height: 6px;
+  /* Скругление углов: 3px */
   border-radius: 3px;
+  /* Фон: linear-gradient */
   background: linear-gradient(to right, var(--accent) var(--fill), var(--surface-3) var(--fill));
 }
 
+/* Дорожка в Firefox */
 .range::-moz-range-track {
+  /* Высота: 6px */
   height: 6px;
+  /* Скругление углов: 3px */
   border-radius: 3px;
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
 }
 
+/* Закрашенная часть дорожки в Firefox */
 .range::-moz-range-progress {
+  /* Высота: 6px */
   height: 6px;
+  /* Скругление углов: 3px */
   border-radius: 3px;
+  /* Фон: var(--accent) */
   background: var(--accent);
 }
 
+/* Бегунок в Chrome/Safari */
 .range::-webkit-slider-thumb {
+  /* Убрать стандартный вид элемента в Safari/Chrome */
   -webkit-appearance: none;
+  /* Ширина: 22px */
   width: 22px;
+  /* Высота: 22px */
   height: 22px;
+  /* Внешний отступ сверху: -8px */
   margin-top: -8px;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Фон: #fff */
   background: #fff;
+  /* Рамка: 2px solid var(--accent) */
   border: 2px solid var(--accent);
+  /* Тень: 0 2px 6px rgba(16, 24, 40, 0.25) */
   box-shadow: 0 2px 6px rgba(16, 24, 40, 0.25);
 }
 
+/* Бегунок в Firefox */
 .range::-moz-range-thumb {
+  /* Ширина: 18px */
   width: 18px;
+  /* Высота: 18px */
   height: 18px;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Фон: #fff */
   background: #fff;
+  /* Рамка: 2px solid var(--accent) */
   border: 2px solid var(--accent);
 }
 
+/* Фокус на ползунке: без стандартной рамки */
 .range:focus-visible {
+  /* Без тени */
   box-shadow: none;
 }
 
+/* Фокус на ползунке: кольцо вокруг бегунка */
 .range:focus-visible::-webkit-slider-thumb {
+  /* Тень: var(--focus) */
   box-shadow: var(--focus);
 }
 
 /* Тумблер */
+/* Список переключателей */
 .switch-list {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.85rem */
   gap: 0.85rem;
 }
 
+/* Строка переключателя с пояснением */
 .switch-row {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.2rem */
   gap: 0.2rem;
 }
 
+/* Переключатель: дорожка и подпись */
 .switch {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.75rem */
   gap: 0.75rem;
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
 }
 
+/* Настоящий флажок — невидимый, но рабочий (клавиатура, диктор) */
 .switch input {
   /* Невидимый, но настоящий чекбокс прямо поверх дорожки: клик попадает в него, а не в декор */
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступ слева: 0 */
   left: 0;
+  /* Отступ от верха: 50% */
   top: 50%;
+  /* Преобразование (сдвиг/масштаб/поворот): translateY(-50%) */
   transform: translateY(-50%);
+  /* Порядок наложения (больше — выше): 1 */
   z-index: 1;
+  /* Непрозрачность: 0 */
   opacity: 0;
+  /* Ширина: 44px */
   width: 44px;
+  /* Высота: 26px */
   height: 26px;
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
 }
 
+/* Нарисованная дорожка переключателя */
 .switch-track {
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Как элемент растягивается/сжимается в ряду: none */
   flex: none;
+  /* Ширина: 44px */
   width: 44px;
+  /* Высота: 26px */
   height: 26px;
+  /* Скругление углов: 13px */
   border-radius: 13px;
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
+  /* Рамка: 1px solid var(--border-strong) */
   border: 1px solid var(--border-strong);
+  /* Плавное изменение: background-color 0.18s var(--ease), border-color 0.18s va… */
   transition: background-color 0.18s var(--ease), border-color 0.18s var(--ease);
 }
 
+/* Кружок переключателя */
 .switch-thumb {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступ от верха: 2px */
   top: 2px;
+  /* Отступ слева: 2px */
   left: 2px;
+  /* Ширина: 20px */
   width: 20px;
+  /* Высота: 20px */
   height: 20px;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Фон: #fff */
   background: #fff;
+  /* Тень: 0 1px 3px rgba(16, 24, 40, 0.3) */
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.3);
+  /* Плавное изменение: transform 0.18s var(--ease) */
   transition: transform 0.18s var(--ease);
 }
 
+/* Включён — дорожка синяя */
 .switch input:checked + .switch-track {
+  /* Фон: var(--accent) */
   background: var(--accent);
+  /* Цвет рамки: var(--accent) */
   border-color: var(--accent);
 }
 
+/* Включён — кружок справа */
 .switch input:checked + .switch-track .switch-thumb {
+  /* Преобразование (сдвиг/масштаб/поворот): translateX(18px) */
   transform: translateX(18px);
 }
 
+/* Фокус — кольцо вокруг дорожки */
 .switch input:focus-visible + .switch-track {
+  /* Тень: var(--focus) */
   box-shadow: var(--focus);
 }
 
+/* Подпись переключателя */
 .switch-label {
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
 }
 
+/* Неактивный переключатель */
 .switch-row.is-disabled .switch {
+  /* Курсор «запрещено» */
   cursor: not-allowed;
+  /* Непрозрачность: 0.55 */
   opacity: 0.55;
 }
 
+/* Пояснение под переключателем */
 .switch-hint {
+  /* Внешний отступ слева: calc(44px + 0.75rem) */
   margin-left: calc(44px + 0.75rem);
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Размер шрифта: 0.85rem */
   font-size: 0.85rem;
+  /* Максимальная ширина: 48ch */
   max-width: 48ch;
 }
 
+/* Пояснение-ошибка — красным */
 .switch-hint[role="alert"] {
+  /* Цвет текста: var(--danger) */
   color: var(--danger);
 }
 
 /* Сегменты (диаметр, звук) */
+/* Группа «диаметр» */
 .diameter {
+  /* Без рамки */
   border: 0;
+  /* Внутренние отступы: 0 */
   padding: 0;
+  /* Внешние отступы: 0 */
   margin: 0;
 }
 
+/* Заголовок группы «диаметр» */
 .diameter legend {
+  /* Внешний отступ снизу: 0.5rem */
   margin-bottom: 0.5rem;
 }
 
+/* Ряд сегментов (кнопки-переключатели) … */
 .segmented,
+/* … и широкий ряд сегментов */
 .segmented-wide {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
+  /* Расстояние между дочерними элементами: 4px */
   gap: 4px;
+  /* Внутренние отступы: 4px */
   padding: 4px;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
 }
 
+/* Сегмент … */
 .seg,
+/* … и кнопка широкого ряда */
 .segmented-wide button {
+  /* Минимальная ширина: 52px */
   min-width: 52px;
+  /* Минимальная высота: 40px */
   min-height: 40px;
+  /* Внутренние отступы: 0 0.85rem */
   padding: 0 0.85rem;
+  /* Без рамки */
   border: 0;
+  /* Скругление углов: var(--r-sm) */
   border-radius: var(--r-sm);
+  /* Фон: прозрачный */
   background: transparent;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 0.95rem var(--text-font) */
   font: 600 0.95rem var(--text-font);
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
+  /* Плавное изменение: background-color 0.15s var(--ease), color 0.15s var(--ease) */
   transition: background-color 0.15s var(--ease), color 0.15s var(--ease);
 }
 
+/* Выбранный сегмент … */
 .seg[aria-checked="true"],
+/* … и выбранная кнопка широкого ряда — белая «плашка» */
 .segmented-wide button[aria-checked="true"] {
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
+/* Кнопки широкого ряда делят ширину поровну */
 .segmented-wide button {
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Распределение дочерних элементов вдоль оси: center */
   justify-content: center;
+  /* Расстояние между дочерними элементами: 0.4rem */
   gap: 0.4rem;
+  /* Внутренние отступы: 0 0.6rem */
   padding: 0 0.6rem;
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
 }
 
+/* Неактивная кнопка широкого ряда */
 .segmented-wide button:disabled {
+  /* Непрозрачность: 0.4 */
   opacity: 0.4;
+  /* Курсор «запрещено» */
   cursor: not-allowed;
 }
 
+/* Поле «своё» в ряду диаметров */
 .seg-custom {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.35rem */
   gap: 0.35rem;
+  /* Внутренний отступ справа: 0.5rem */
   padding-right: 0.5rem;
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Само поле «своё» */
 .seg-custom input {
+  /* Ширина: 5.5rem */
   width: 5.5rem;
+  /* Минимальная высота: 40px */
   min-height: 40px;
+  /* Скругление углов: var(--r-sm) */
   border-radius: var(--r-sm);
 }
 
 /* --- панели --------------------------------------------------------------- */
+/* Правая колонка настроек */
 .inspector {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1.25rem */
   gap: 1.25rem;
+  /* Выравнивание строк содержимого: start */
   align-content: start;
+  /* Внутренние отступы: 1.5rem */
   padding: 1.5rem;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
+/* Секция настроек (карточка) */
 .panel-section {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.85rem */
   gap: 0.85rem;
+  /* Внутренний отступ сверху: 1.1rem */
   padding-top: 1.1rem;
+  /* Рамка сверху: 1px solid var(--border) */
   border-top: 1px solid var(--border);
 }
 
+/* Шапка секции */
 .panel-section-head {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Распределение дочерних элементов вдоль оси: space-between */
   justify-content: space-between;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
 }
 
+/* Заголовок секции */
 .panel-section-head h2 {
+  /* Семейство шрифта: var(--text-font) */
   font-family: var(--text-font);
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
+  /* Размер шрифта: 0.92rem */
   font-size: 0.92rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
 /* --- новый портрет -------------------------------------------------------- */
+/* Блок «Новый портрет»: круг слева, настройки справа */
 .new-project {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Колонки сетки: minmax(0, 1.05fr) minmax(340px, 0.95fr) */
   grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+  /* Расстояние между дочерними элементами: 2rem */
   gap: 2rem;
+  /* Выравнивание дочерних элементов поперёк оси: start */
   align-items: start;
+  /* Внешний отступ снизу: 3.5rem */
   margin-bottom: 3.5rem;
 }
 
+/* Зона загрузки … */
 .drop,
+/* … и окно кадра — общий вид круга */
 .editor-view {
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Выравнивание содержимого ячеек: center */
   place-items: center;
+  /* Пропорции: 1 */
   aspect-ratio: 1;
+  /* Ширина: 100% */
   width: 100%;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Фон: var(--stage) */
   background: var(--stage);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
 }
 
+/* Зона загрузки */
 .drop {
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
 }
 
+/* Кольцо гвоздей вокруг круга */
 .drop-ring {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступы со всех сторон: 4% */
   inset: 4%;
+  /* Ширина: 92% */
   width: 92%;
+  /* Высота: 92% */
   height: 92%;
 }
 
+/* Точка-гвоздь кольца */
 .ring-nail {
+  /* Заливка SVG: var(--text-2) */
   fill: var(--text-2);
 }
 
+/* Ось кольца */
 .ring-axis {
+  /* Цвет линии SVG: var(--text-2) */
   stroke: var(--text-2);
+  /* Пунктир линии SVG: 3 4 */
   stroke-dasharray: 3 4;
+  /* Непрозрачность: 0.35 */
   opacity: 0.35;
 }
 
+/* Буква сектора у кольца */
 .ring-sector {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 15px var(--display) */
   font: 600 15px var(--display);
+  /* Заливка SVG: var(--text-2) */
   fill: var(--text-2);
+  /* Привязка текста SVG: middle */
   text-anchor: middle;
+  /* Вертикальная привязка текста SVG: central */
   dominant-baseline: central;
 }
 
+/* Пунктирная обводка зоны загрузки */
 .drop::before {
+  /* Псевдоэлемент без текста (нужен для рисования) */
   content: "";
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступы со всех сторон: 11.5% */
   inset: 11.5%;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Фон: #fff */
   background: #fff;
+  /* Тень: var(--shadow-2) */
   box-shadow: var(--shadow-2);
+  /* Плавное изменение: box-shadow 0.2s var(--ease), transform 0.2s var(--ease) */
   transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
 }
 
+/* Обводка под курсором */
 .drop:hover::before {
+  /* Преобразование (сдвиг/масштаб/поворот): scale(1.01) */
   transform: scale(1.01);
 }
 
+/* Обводка при перетаскивании файла … */
 .drop.is-drag::before,
+/* … и при фокусе с клавиатуры */
 .drop:focus-within::before {
+  /* Тень: 0 0 0 4px var(--accent), var(--shadow-2) */
   box-shadow: 0 0 0 4px var(--accent), var(--shadow-2);
 }
 
+/* Надпись в центре зоны загрузки */
 .drop-text {
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Выравнивание элементов в ячейках по горизонтали: center */
   justify-items: center;
+  /* Расстояние между дочерними элементами: 0.35rem */
   gap: 0.35rem;
+  /* Выравнивание текста: center */
   text-align: center;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 1.15rem var(--display) */
   font: 600 1.15rem var(--display);
+  /* Цвет текста: #15181d */
   color: #15181d;
+  /* Внешние отступы: 0 20% */
   margin: 0 20%;
+  /* Внутренние отступы: 0.9rem 1.1rem */
   padding: 0.9rem 1.1rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: #fff */
   background: #fff;
 }
 
+/* Значок в надписи */
 .drop-text svg {
+  /* Цвет текста: #3550f0 */
   color: #3550f0;
+  /* Внешний отступ снизу: 0.25rem */
   margin-bottom: 0.25rem;
 }
 
+/* Пояснение в надписи */
 .drop-text small {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 400 0.9rem var(--text-font) */
   font: 400 0.9rem var(--text-font);
+  /* Цвет текста: #5b6472 */
   color: #5b6472;
 }
 
+/* Во время загрузки кольцо крутится */
 .drop.is-busy .drop-ring {
+  /* Анимация: spin 6s linear infinite */
   animation: spin 6s linear infinite;
 }
 
+/* Анимация вращения */
 @keyframes spin {
+  /* Конечное состояние — полный оборот */
   to {
+    /* Преобразование (сдвиг/масштаб/поворот): rotate(360deg) */
     transform: rotate(360deg);
   }
 }
 
+/* Холст кадра */
 .editor-canvas {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступы со всех сторон: 13.5% */
   inset: 13.5%;
+  /* Ширина: 73% */
   width: 73%;
+  /* Высота: 73% */
   height: 73%;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Фон: #fff */
   background: #fff;
+  /* Тень: var(--shadow-2) */
   box-shadow: var(--shadow-2);
+  /* Курсор «ладонь» — можно тянуть */
   cursor: grab;
+  /* Какие жесты обрабатывает браузер: none */
   touch-action: none; /* жесты пальцами — наши, а не прокрутка страницы */
 }
 
+/* Пока тянут — курсор «сжатая ладонь» */
 .editor-canvas:active {
+  /* Курсор «сжатая ладонь» — тянем */
   cursor: grabbing;
 }
 
+/* Надпись «Загружаем фото…» поверх кадра */
 .editor-loading {
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Не реагирует на мышь — клики проходят сквозь */
   pointer-events: none; /* надпись не мешает сразу двигать кадр */
+  /* Выравнивание текста: center */
   text-align: center;
+  /* Максимальная ширина: 70% */
   max-width: 70%;
 }
 
+/* Надпись об ошибке загрузки */
 .editor-loading.is-error {
+  /* Цвет текста: var(--danger) */
   color: var(--danger);
 }
 
+/* Заголовок формы нового портрета */
 .new-form h1 {
+  /* Внешний отступ снизу: -0.25rem */
   margin-bottom: -0.25rem;
 }
 
+/* Ряды кнопок: новый портрет, … */
 .new-actions,
+/* … правка фото, … */
 .photo-actions,
+/* … главные кнопки студии, … */
 .cta-row,
+/* … медиа */
 .media-actions {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
 }
 
+/* Панель настроек фото */
 .photo-controls {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1.1rem */
   gap: 1.1rem;
+  /* Внутренний отступ сверху: 1.1rem */
   padding-top: 1.1rem;
+  /* Рамка сверху: 1px solid var(--border) */
   border-top: 1px solid var(--border);
 }
 
+/* Панель автонастройки */
 .auto-panel {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
+  /* Внутренние отступы: 1rem */
   padding: 1rem;
+  /* Скругление углов: var(--r-lg) */
   border-radius: var(--r-lg);
+  /* Фон: var(--accent-soft) */
   background: var(--accent-soft);
 }
 
+/* Кнопка автонастройки */
 .auto-panel .btn.tonal {
+  /* Фон: var(--surface) */
   background: var(--surface);
 }
 
+/* Пояснение автонастройки */
 .auto-note {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Размер шрифта: 0.9rem */
   font-size: 0.9rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Выделенные цифры результата */
 .auto-note strong {
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
+/* Предупреждение (сброс прогресса) */
 .warning {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Внутренние отступы: 0.75rem 1rem */
   padding: 0.75rem 1rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--accent-soft) */
   background: var(--accent-soft);
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
 /* --- список портретов ----------------------------------------------------- */
+/* Заголовок списка портретов */
 .projects h2 {
+  /* Семейство шрифта: var(--display) */
   font-family: var(--display);
+  /* Насыщенность шрифта: 700 */
   font-weight: 700;
+  /* Размер шрифта: 1.5rem */
   font-size: 1.5rem;
+  /* Внешний отступ снизу: 1.25rem */
   margin-bottom: 1.25rem;
 }
 
+/* Сетка карточек портретов */
 .cards {
+  /* Без маркеров списка */
   list-style: none;
+  /* Внутренние отступы: 0 */
   padding: 0;
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Колонки сетки: repeat(auto-fill, minmax(210px, 1fr)) */
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
 }
 
+/* Карточка портрета */
 .card {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Выравнивание элементов в ячейках по горизонтали: center */
   justify-items: center;
+  /* Расстояние между дочерними элементами: 0.25rem */
   gap: 0.25rem;
+  /* Внутренние отступы: 1.25rem 1rem 1.1rem */
   padding: 1.25rem 1rem 1.1rem;
+  /* Скругление углов: var(--r-lg) */
   border-radius: var(--r-lg);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
+  /* Цвет текста: inherit */
   color: inherit;
+  /* Без подчёркивания */
   text-decoration: none;
+  /* Выравнивание текста: center */
   text-align: center;
+  /* Плавное изменение: transform 0.18s var(--ease), box-shadow 0.18s var(--ease)… */
   transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), border-color 0.18s var(--ease);
 }
 
+/* Карточка под курсором — приподнимается */
 .card:hover {
+  /* Преобразование (сдвиг/масштаб/поворот): translateY(-2px) */
   transform: translateY(-2px);
+  /* Тень: var(--shadow-2) */
   box-shadow: var(--shadow-2);
+  /* Цвет рамки: var(--border-strong) */
   border-color: var(--border-strong);
 }
 
+/* Картинка карточки с кольцом прогресса */
 .card-art {
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Ширина: 168px */
   width: 168px;
+  /* Высота: 168px */
   height: 168px;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Выравнивание содержимого ячеек: center */
   place-items: center;
+  /* Внешний отступ снизу: 0.6rem */
   margin-bottom: 0.6rem;
 }
 
+/* Превью в карточке */
 .card-art img {
+  /* Ширина: 146px */
   width: 146px;
+  /* Высота: 146px */
   height: 146px;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Фон: #fff */
   background: #fff;
 }
 
+/* Кольцо прогресса */
 .card-ring {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступы со всех сторон: 0 — растянуть на весь родитель */
   inset: 0;
 }
 
+/* Дорожка кольца */
 .card-ring-track {
+  /* Заливка SVG: none */
   fill: none;
+  /* Цвет линии SVG: var(--surface-3) */
   stroke: var(--surface-3);
+  /* Толщина линии SVG: 3 */
   stroke-width: 3;
 }
 
+/* Заполненная часть кольца */
 .card-ring-fill {
+  /* Заливка SVG: none */
   fill: none;
+  /* Цвет линии SVG: var(--accent) */
   stroke: var(--accent);
+  /* Толщина линии SVG: 3 */
   stroke-width: 3;
+  /* Концы линий SVG: round */
   stroke-linecap: round;
 }
 
+/* Название в карточке */
 .card-name {
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
 }
 
+/* Строки с прогрессом и датой */
 .card-meta {
+  /* Размер шрифта: 0.85rem */
   font-size: 0.85rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
 /* --- студия --------------------------------------------------------------- */
+/* «Хлебные крошки» */
 .crumbs {
+  /* Внешний отступ снизу: 1rem */
   margin-bottom: 1rem;
 }
 
+/* Ссылка в «крошках» */
 .crumbs a {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.3rem */
   gap: 0.3rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Без подчёркивания */
   text-decoration: none;
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
 }
 
+/* Ссылка в «крошках» под курсором */
 .crumbs a:hover {
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
+/* Сетка студии: сцена и настройки */
 .studio-grid {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Колонки сетки: minmax(0, 1.2fr) minmax(340px, 0.8fr) */
   grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  /* Расстояние между дочерними элементами: 1.5rem */
   gap: 1.5rem;
+  /* Выравнивание дочерних элементов поперёк оси: start */
   align-items: start;
 }
 
+/* Сцена студии — прилипает при прокрутке */
 .stage {
+  /* Прилипает к краю при прокрутке */
   position: sticky;
+  /* Отступ от верха: 6rem */
   top: 6rem;
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
+  /* Внутренние отступы: 1.5rem */
   padding: 1.5rem;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Фон: var(--stage) */
   background: var(--stage);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
 }
 
+/* Пояснение под сценой */
 .stage-note {
+  /* Внешние отступы: 0.75rem 0 0 */
   margin: 0.75rem 0 0;
+  /* Выравнивание текста: center */
   text-align: center;
+  /* Размер шрифта: 0.85rem */
   font-size: 0.85rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Холст картины */
 .board canvas {
+  /* Блочный элемент на всю ширину */
   display: block;
+  /* Ширина: 100% */
   width: 100%;
+  /* Высота: auto */
   height: auto;
+  /* Пропорции: 1 */
   aspect-ratio: 1;
+  /* Скругление углов: 50% */
   border-radius: 50%;
 }
 
+/* Название портрета — поле ввода, похожее на заголовок */
 .title-input {
+  /* Ширина: 100% */
   width: 100%;
+  /* Без рамки (!important — важнее других правил) */
   border: 0 !important;
+  /* Скругление углов: 0 (!important — важнее других правил) */
   border-radius: 0 !important;
+  /* Фон: прозрачный (!important — важнее других правил) */
   background: transparent !important;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 700 1.6rem/1.2 var(--display) (!important — важнее других правил) */
   font: 700 1.6rem/1.2 var(--display) !important;
+  /* Внутренние отступы: 0.1rem 0 (!important — важнее других правил) */
   padding: 0.1rem 0 !important;
+  /* Минимальная высота: 0 (!important — важнее других правил) */
   min-height: 0 !important;
+  /* Рамка снизу: 2px solid transparent (!important — важнее других правил) */
   border-bottom: 2px solid transparent !important;
 }
 
+/* Название под курсором … */
 .title-input:hover,
+/* … и в фокусе — видно, что можно редактировать */
 .title-input:focus {
+  /* Цвет нижней рамки: var(--border-strong) (!important — важнее других правил) */
   border-bottom-color: var(--border-strong) !important;
+  /* Без тени (!important — важнее других правил) */
   box-shadow: none !important;
 }
 
+/* График сходства */
 .sim-chart {
+  /* Внешние отступы: 0.5rem 0 0 */
   margin: 0.5rem 0 0;
 }
 
+/* Сам график */
 .sim-chart svg {
+  /* Блочный элемент на всю ширину */
   display: block;
+  /* Ширина: 100% */
   width: 100%;
+  /* Высота: 72px */
   height: 72px;
 }
 
+/* Заливка под кривой */
 .sim-area {
+  /* Заливка SVG: var(--accent-soft) */
   fill: var(--accent-soft);
 }
 
+/* Кривая */
 .sim-line {
+  /* Заливка SVG: none */
   fill: none;
+  /* Цвет линии SVG: var(--accent) */
   stroke: var(--accent);
+  /* Толщина линии SVG: 2 */
   stroke-width: 2;
+  /* Толщина линии не зависит от масштаба SVG */
   vector-effect: non-scaling-stroke;
 }
 
+/* Черта текущего числа линий */
 .sim-cursor {
+  /* Цвет линии SVG: var(--text) */
   stroke: var(--text);
+  /* Толщина линии SVG: 1.5 */
   stroke-width: 1.5;
+  /* Пунктир линии SVG: 3 3 */
   stroke-dasharray: 3 3;
+  /* Толщина линии не зависит от масштаба SVG */
   vector-effect: non-scaling-stroke;
 }
 
+/* Точка максимума */
 .sim-best {
+  /* Заливка SVG: var(--surface) */
   fill: var(--surface);
+  /* Цвет линии SVG: var(--accent) */
   stroke: var(--accent);
+  /* Толщина линии SVG: 2.5 */
   stroke-width: 2.5;
+  /* Толщина линии не зависит от масштаба SVG */
   vector-effect: non-scaling-stroke;
 }
 
+/* Подпись под графиком */
 .sim-chart figcaption {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Распределение дочерних элементов вдоль оси: space-between */
   justify-content: space-between;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
+  /* Расстояние между дочерними элементами: 0.25rem 1rem */
   gap: 0.25rem 1rem;
+  /* Внешний отступ сверху: 0.4rem */
   margin-top: 0.4rem;
+  /* Размер шрифта: 0.9rem */
   font-size: 0.9rem;
 }
 
+/* Список показателей лески */
 .stats {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0 */
   gap: 0;
 }
 
+/* Строка показателя */
 .stats div {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Распределение дочерних элементов вдоль оси: space-between */
   justify-content: space-between;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
+  /* Внутренние отступы: 0.5rem 0 */
   padding: 0.5rem 0;
+  /* Рамка снизу: 1px dashed var(--border) */
   border-bottom: 1px dashed var(--border);
 }
 
+/* Последняя строка — без линии снизу */
 .stats div:last-child {
+  /* Рамка снизу: 0 */
   border-bottom: 0;
 }
 
+/* Название показателя */
 .stats dt {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Значение показателя */
 .stats dd {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
+  /* Цифры одинаковой ширины — числа не «прыгают» при смене */
   font-variant-numeric: tabular-nums;
 }
 
+/* Выделенный показатель (катушка) */
 .stats .stat-key {
+  /* Внутренние отступы: 0.75rem 1rem */
   padding: 0.75rem 1rem;
+  /* Внешний отступ снизу: 0.25rem */
   margin-bottom: 0.25rem;
+  /* Без рамки */
   border: 0;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--accent-soft) */
   background: var(--accent-soft);
 }
 
+/* Название выделенного показателя */
 .stats .stat-key dt {
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
 }
 
+/* Значение выделенного показателя */
 .stats .stat-key dd {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 700 1.15rem var(--display) */
   font: 700 1.15rem var(--display);
+  /* Цвет текста: var(--accent-ink) */
   color: var(--accent-ink);
 }
 
+/* Ряд «миниатюра фото и кнопка» */
 .photo-row {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
 }
 
+/* Миниатюра фото */
 .photo-thumb {
+  /* Ширина: 72px */
   width: 72px;
+  /* Высота: 72px */
   height: 72px;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
 }
 
+/* Страница-заглушка (ошибка, не найдено) */
 .page-empty {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
+  /* Выравнивание элементов в ячейках по горизонтали: start */
   justify-items: start;
 }
 
 /* --- плетение ---------------------------------------------------------------
    Сцена слева (схема или фильм), справа — шаг «откуда → куда» и маленькая схема.
    Всё главное помещается в один экран ноутбука; настройки — во вкладках ниже. */
+/* Экран плетения — сетка из областей */
 .weave {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Колонки сетки: minmax(0, 1fr) 360px */
   grid-template-columns: minmax(0, 1fr) 360px;
+  /* Именованные области сетки: (значение на следующих строках) */
   grid-template-areas:
+    /* Ряд сетки: области «top top» */
     "top top"
+    /* Ряд сетки: области «stage rail» */
     "stage rail"
+    /* Ряд сетки: области «settings rail» */
     "settings rail";
+  /* Расстояние между дочерними элементами: 1rem 1.25rem */
   gap: 1rem 1.25rem;
+  /* Выравнивание дочерних элементов поперёк оси: start */
   align-items: start;
 }
 
+/* Верхняя строка экрана плетения */
 .weave-top {
+  /* В какой области сетки стоит элемент: top */
   grid-area: top;
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.9rem 1.1rem */
   gap: 0.9rem 1.1rem;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
+  /* Внутренние отступы: 0.6rem 1.1rem 0.6rem 0.6rem */
   padding: 0.6rem 1.1rem 0.6rem 0.6rem;
+  /* Скругление углов: var(--r-lg) */
   border-radius: var(--r-lg);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
+  /* Цифры одинаковой ширины — числа не «прыгают» при смене */
   font-variant-numeric: tabular-nums;
 }
 
+/* Кнопка «назад» */
 .weave-back {
+  /* Строчная сетка */
   display: inline-grid;
+  /* Выравнивание содержимого ячеек: center */
   place-items: center;
+  /* Ширина: 38px */
   width: 38px;
+  /* Высота: 38px */
   height: 38px;
+  /* Скругление углов: 12px */
   border-radius: 12px;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Без подчёркивания */
   text-decoration: none;
 }
 
+/* «Назад» под курсором */
 .weave-back:hover {
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
+/* Название портрета в верхней строке */
 .weave-title {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 1rem var(--display) */
   font: 600 1rem var(--display);
+  /* Максимальная ширина: 16ch */
   max-width: 16ch;
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
+  /* Не поместившийся текст обрезается многоточием */
   text-overflow: ellipsis;
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
 }
 
+/* Счётчик шагов */
 .weave-count {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
 }
 
+/* Номер шага … */
 .weave-count strong,
+/* … и проценты — цифры одной ширины */
 .weave-percent {
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
 }
 
+/* Полоса прогресса в верхней строке */
 .weave-top .bar {
+  /* Как элемент растягивается/сжимается в ряду: 1 1 160px */
   flex: 1 1 160px;
 }
 
+/* Расход лески */
 .thread-used {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Размер шрифта: 0.9rem */
   font-size: 0.9rem;
 }
 
+/* Полоса прогресса */
 .bar {
+  /* Высота: 8px */
   height: 8px;
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
+  /* Скругление углов: 4px */
   border-radius: 4px;
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
 }
 
+/* Заполненная часть полосы */
 .bar span {
+  /* Блочный элемент на всю ширину */
   display: block;
+  /* Высота: 100% */
   height: 100%;
+  /* Скругление углов: 4px */
   border-radius: 4px;
+  /* Фон: var(--accent) */
   background: var(--accent);
+  /* Плавное изменение: width 0.3s var(--ease) */
   transition: width 0.3s var(--ease);
 }
 
 /* Сцена */
+/* Сцена плетения */
 .weave-stage {
+  /* В какой области сетки стоит элемент: stage */
   grid-area: stage;
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
+/* Без видео — сцена светлая (там схема) */
 .no-video .weave-stage {
+  /* Внутренние отступы: 1.25rem */
   padding: 1.25rem;
+  /* Фон: var(--stage) */
   background: var(--stage);
 }
 
+/* Схема на сцене */
 .stage-board {
+  /* Ширина: min(100%, calc(100vh - 230px)) */
   width: min(100%, calc(100vh - 230px));
+  /* Минимальная ширина: 260px */
   min-width: 260px;
+  /* Внешние отступы: 0 auto */
   margin: 0 auto;
 }
 
+/* С видео — сцена тёмная, как в кинотеатре */
 .has-video .weave-stage {
+  /* Фон: #05060a */
   background: #05060a;
+  /* Цвет рамки: #05060a */
   border-color: #05060a;
 }
 
+/* Встроенный видеоплеер … */
 .media-screen.is-video iframe,
+/* … и видеофайл заполняют сцену */
 .media-screen.is-video video {
+  /* Блочный элемент на всю ширину */
   display: block;
+  /* Ширина: 100% */
   width: 100%;
+  /* Пропорции: 16 / 9 */
   aspect-ratio: 16 / 9;
+  /* Максимальная высота: calc(100vh - 250px) */
   max-height: calc(100vh - 250px);
+  /* Минимальная высота: 200px */
   min-height: 200px;
+  /* Без рамки */
   border: 0;
+  /* Фон: #000 */
   background: #000;
 }
 
+/* Аудио на сцене */
 .media-screen.is-audio {
+  /* Внутренние отступы: 1.25rem */
   padding: 1.25rem;
+  /* Фон: var(--stage) */
   background: var(--stage);
 }
 
+/* Встроенный аудиоплеер */
 .media-screen.is-audio iframe {
+  /* Блочный элемент на всю ширину */
   display: block;
+  /* Ширина: 100% */
   width: 100%;
+  /* Высота: 450px */
   height: 450px;
+  /* Без рамки */
   border: 0;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
 }
 
+/* Блок аудиофайла: значок и плеер */
 .media-audio {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
+  /* Внутренние отступы: 1rem */
   padding: 1rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Цвет текста: var(--accent) */
   color: var(--accent);
 }
 
+/* Название и плеер аудио */
 .media-audio > div {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
   min-width: 0;
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
+/* Аудиоплеер */
 .media-audio audio {
+  /* Ширина: 100% */
   width: 100%;
 }
 
+/* Панель под видео */
 .stage-bar {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Внутренние отступы: 0.5rem 0.6rem 0.5rem 1.1rem */
   padding: 0.5rem 0.6rem 0.5rem 1.1rem;
+  /* Фон: #05060a */
   background: #05060a;
+  /* Цвет текста: #e9ecf2 */
   color: #e9ecf2;
 }
 
+/* Название ролика */
 .stage-title {
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
   min-width: 0;
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
+  /* Не поместившийся текст обрезается многоточием */
   text-overflow: ellipsis;
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
+  /* Размер шрифта: 0.9rem */
   font-size: 0.9rem;
+  /* Цвет текста: #aeb6c4 */
   color: #aeb6c4;
 }
 
+/* Кнопка на тёмном фоне */
 .btn.on-dark {
+  /* Цвет текста: #e9ecf2 */
   color: #e9ecf2;
 }
 
+/* Кнопка на тёмном фоне под курсором */
 .btn.on-dark:hover:not(:disabled) {
+  /* Фон: rgba(255, 255, 255, 0.1) */
   background: rgba(255, 255, 255, 0.1);
+  /* Цвет текста: #fff */
   color: #fff;
 }
 
 /* Правая колонка */
+/* Правая колонка экрана плетения */
 .weave-rail {
+  /* В какой области сетки стоит элемент: rail */
   grid-area: rail;
+  /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
   min-width: 0;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
+  /* Выравнивание строк содержимого: start */
   align-content: start;
 }
 
+/* Карточка текущего шага */
 .step-card {
+  /* Элемент — «контейнер»: размеры внутри считаются от его ширины */
   container-type: inline-size; /* размер шага — от ширины карточки, а не окна */
+  /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
   min-width: 0;
+  /* Внутренние отступы: 1.25rem 1.35rem 1.35rem */
   padding: 1.25rem 1.35rem 1.35rem;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
 /* Главный элемент: читается с расстояния вытянутой руки, пока руки заняты леской */
+/* Строка шага «откуда → куда» */
 .weave-step {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.12em */
   gap: 0.12em;
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 700 clamp(2.3rem, 3.6vw, 3.2rem) / 1 var(--display) */
   font: 700 clamp(2.3rem, 3.6vw, 3.2rem) / 1 var(--display);
+  /* Размер шрифта: min(3.4rem, 13cqi) */
   font-size: min(3.4rem, 13cqi);
+  /* Расстояние между буквами: -0.03em */
   letter-spacing: -0.03em;
+  /* Цифры одинаковой ширины — числа не «прыгают» при смене */
   font-variant-numeric: tabular-nums;
 }
 
+/* Номер гвоздя */
 .nail {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.14em */
   gap: 0.14em;
 }
 
+/* Гвоздь «откуда» — мельче и бледнее */
 .nail.from {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
 }
 
+/* Гвоздь «куда» — синий */
 .nail.to {
+  /* Цвет текста: var(--accent) */
   color: var(--accent);
 }
 
+/* Мини-компас гвоздя */
 .nail-compass {
+  /* Ширина: 0.62em */
   width: 0.62em;
+  /* Высота: 0.62em */
   height: 0.62em;
+  /* Как элемент растягивается/сжимается в ряду: none */
   flex: none;
+  /* Что делать с выходящим за края: visible */
   overflow: visible;
 }
 
+/* Круг компаса */
 .nc-ring {
+  /* Заливка SVG: none */
   fill: none;
+  /* Цвет линии SVG: currentColor */
   stroke: currentColor;
+  /* Толщина линии SVG: 1.6 */
   stroke-width: 1.6;
+  /* Непрозрачность: 0.55 */
   opacity: 0.55;
 }
 
+/* Четверть сектора */
 .nc-quarter {
+  /* Заливка SVG: currentColor */
   fill: currentColor;
+  /* Непрозрачность: 0.2 */
   opacity: 0.2;
 }
 
+/* Оси компаса */
 .nc-axis {
+  /* Цвет линии SVG: currentColor */
   stroke: currentColor;
+  /* Толщина линии SVG: 1 */
   stroke-width: 1;
+  /* Непрозрачность: 0.35 */
   opacity: 0.35;
 }
 
+/* Точка гвоздя */
 .nc-dot {
+  /* Заливка SVG: currentColor */
   fill: currentColor;
 }
 
 /* Нить «откуда → куда» прорисовывается заново на каждом шаге */
+/* Стрелка-нить между гвоздями */
 .thread {
+  /* Ширина: 0.95em */
   width: 0.95em;
+  /* Высота: 0.3em */
   height: 0.3em;
+  /* Как элемент растягивается/сжимается в ряду: none */
   flex: none;
+  /* Внешние отступы: 0 0.04em */
   margin: 0 0.04em;
+  /* Что делать с выходящим за края: visible */
   overflow: visible;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Линия стрелки … */
 .thread line,
+/* … и наконечник */
 .thread path {
+  /* Заливка SVG: none */
   fill: none;
+  /* Цвет линии SVG: currentColor */
   stroke: currentColor;
+  /* Толщина линии SVG: 3 */
   stroke-width: 3;
+  /* Концы линий SVG: round */
   stroke-linecap: round;
+  /* Стыки линий SVG: round */
   stroke-linejoin: round;
 }
 
+/* Линия «прорисовывается» при смене шага */
 .thread line {
+  /* Пунктир линии SVG: 56 */
   stroke-dasharray: 56;
+  /* Анимация: draw-thread 0.4s var(--ease) */
   animation: draw-thread 0.4s var(--ease);
 }
 
+/* Анимация прорисовки нити */
 @keyframes draw-thread {
+  /* Начало: линия ещё не нарисована */
   from {
+    /* Сдвиг пунктира (для анимации «прорисовки»): 56 */
     stroke-dashoffset: 56;
   }
 }
 
+/* Подсказка под шагом */
 .weave-hint {
+  /* Минимальная высота: 1.5em */
   min-height: 1.5em;
+  /* Внешние отступы: 0.75rem 0 1.1rem */
   margin: 0.75rem 0 1.1rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Кнопки «назад — пауза — вперёд» */
 .transport {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
 }
 
+/* Круглая кнопка */
 .round-btn {
+  /* Строчная сетка */
   display: inline-grid;
+  /* Выравнивание содержимого ячеек: center */
   place-items: center;
+  /* Как элемент растягивается/сжимается в ряду: none */
   flex: none;
+  /* Ширина: 54px */
   width: 54px;
+  /* Высота: 54px */
   height: 54px;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Рамка: 1px solid var(--border-strong) */
   border: 1px solid var(--border-strong);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
+  /* Плавное изменение: background-color 0.15s var(--ease), transform 0.1s var(--… */
   transition: background-color 0.15s var(--ease), transform 0.1s var(--ease);
 }
 
+/* Круглая кнопка под курсором */
 .round-btn:hover:not(:disabled) {
+  /* Фон: var(--surface-3) */
   background: var(--surface-3);
 }
 
+/* Нажатая круглая кнопка */
 .round-btn:active:not(:disabled) {
+  /* Преобразование (сдвиг/масштаб/поворот): scale(0.96) */
   transform: scale(0.96);
 }
 
+/* Неактивная круглая кнопка */
 .round-btn:disabled {
+  /* Непрозрачность: 0.35 */
   opacity: 0.35;
+  /* Курсор «запрещено» */
   cursor: not-allowed;
 }
 
+/* Главная кнопка «старт/пауза» — крупная синяя */
 .round-btn.play {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Расстояние между дочерними элементами: 0.55rem */
   gap: 0.55rem;
+  /* Ширина: auto */
   width: auto;
+  /* Высота: 62px */
   height: 62px;
+  /* Внутренние отступы: 0 1.2rem */
   padding: 0 1.2rem;
+  /* Скругление углов: 31px */
   border-radius: 31px;
+  /* Без рамки */
   border: 0;
+  /* Фон: var(--accent) */
   background: var(--accent);
+  /* Цвет текста: var(--on-accent) */
   color: var(--on-accent);
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 1.08rem var(--text-font) */
   font: 600 1.08rem var(--text-font);
+  /* Тень: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 r… */
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.14), 0 12px 24px -12px var(--accent);
 }
 
+/* Главная кнопка под курсором */
 .round-btn.play:hover:not(:disabled) {
+  /* Фон: color-mix(in srgb, var(--accent) 88%, var(--text)) */
   background: color-mix(in srgb, var(--accent) 88%, var(--text));
 }
 
+/* Блок скорости */
 .speed {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Распределение дочерних элементов вдоль оси: space-between */
   justify-content: space-between;
+  /* Расстояние между дочерними элементами: 0.75rem */
   gap: 0.75rem;
+  /* Внешний отступ сверху: 1rem */
   margin-top: 1rem;
+  /* Внутренние отступы: 0.3rem */
   padding: 0.3rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
 }
 
+/* Кнопки ± скорости */
 .speed .icon-btn {
+  /* Цвет рамки: transparent */
   border-color: transparent;
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Тень: 0 1px 2px rgba(16, 24, 40, 0.08) */
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
 }
 
+/* Значение скорости */
 .speed-value {
+  /* Выравнивание текста: center */
   text-align: center;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 1rem var(--display) */
   font: 600 1rem var(--display);
+  /* Цифры одинаковой ширины — числа не «прыгают» при смене */
   font-variant-numeric: tabular-nums;
 }
 
+/* Схема в правой колонке (когда на сцене видео) */
 .rail-board {
+  /* Внутренние отступы: 0.9rem */
   padding: 0.9rem;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Фон: var(--stage) */
   background: var(--stage);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
 /* Рядом с фильмом схема поменьше — чтобы фильм, шаг и схема помещались в один экран */
+/* Картина в правой колонке */
 .rail-board .board {
+  /* Ширина: clamp(180px, calc(100vh - 520px), 300px) */
   width: clamp(180px, calc(100vh - 520px), 300px);
+  /* Максимальная ширина: 100% */
   max-width: 100%;
+  /* Внешние отступы: 0 auto */
   margin: 0 auto;
 }
 
 /* Музыка — своя графа в правой колонке */
+/* Музыкальная панель */
 .music-dock {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.7rem */
   gap: 0.7rem;
+  /* Внутренние отступы: 0.85rem 0.9rem 0.95rem */
   padding: 0.85rem 0.9rem 0.95rem;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
+/* Шапка музыкальной панели */
 .music-head {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Внутренний отступ слева: 0.3rem */
   padding-left: 0.3rem;
+  /* Цвет текста: var(--accent) */
   color: var(--accent);
 }
 
+/* Заголовок «Музыка» */
 .music-head h2 {
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
   min-width: 0;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 0.95rem var(--text-font) */
   font: 600 0.95rem var(--text-font);
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
+/* Название текущего трека */
 .music-now {
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
+  /* Не поместившийся текст обрезается многоточием */
   text-overflow: ellipsis;
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
+  /* Насыщенность шрифта: 400 */
   font-weight: 400;
+  /* Размер шрифта: 0.82rem */
   font-size: 0.82rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Кнопки музыкальной панели */
 .music-tools {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Расстояние между дочерними элементами: 0.15rem */
   gap: 0.15rem;
 }
 
+/* Раскрытая стрелка — повёрнута */
 .music-tools [aria-expanded="true"] svg {
+  /* Преобразование (сдвиг/масштаб/поворот): rotate(180deg) */
   transform: rotate(180deg);
 }
 
+/* Встроенный музыкальный плеер */
 .music-frame {
+  /* Блочный элемент на всю ширину */
   display: block;
+  /* Ширина: 100% */
   width: 100%;
+  /* Без рамки */
   border: 0;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
+  /* Плавное изменение: height 0.25s var(--ease) */
   transition: height 0.25s var(--ease);
 }
 
+/* Аудиоплеер музыки */
 .music-audio {
+  /* Ширина: 100% */
   width: 100%;
 }
 
+/* Форма добавления музыки */
 .music-form {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.7rem */
   gap: 0.7rem;
 }
 
 /* Вкладки настроек */
+/* Панель настроек плетения внизу */
 .weave-settings {
+  /* В какой области сетки стоит элемент: settings */
   grid-area: settings;
+  /* Скругление углов: var(--r-xl) */
   border-radius: var(--r-xl);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
 }
 
+/* Ряд вкладок */
 .tab-list {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Расстояние между дочерними элементами: 0.25rem */
   gap: 0.25rem;
+  /* Внутренние отступы: 0.45rem */
   padding: 0.45rem;
+  /* Рамка снизу: 1px solid var(--border) */
   border-bottom: 1px solid var(--border);
+  /* Горизонтальная прокрутка: auto */
   overflow-x: auto;
 }
 
+/* Вкладка */
 .tab-list [role="tab"] {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.45rem */
   gap: 0.45rem;
+  /* Минимальная высота: 40px */
   min-height: 40px;
+  /* Внутренние отступы: 0 0.95rem */
   padding: 0 0.95rem;
+  /* Без рамки */
   border: 0;
+  /* Скругление углов: 12px */
   border-radius: 12px;
+  /* Фон: прозрачный */
   background: transparent;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 0.95rem var(--text-font) */
   font: 600 0.95rem var(--text-font);
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
 }
 
+/* Вкладка под курсором */
 .tab-list [role="tab"]:hover {
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
 }
 
+/* Выбранная вкладка */
 .tab-list [role="tab"][aria-selected="true"] {
+  /* Цвет текста: var(--accent-ink) */
   color: var(--accent-ink);
+  /* Фон: var(--accent-soft) */
   background: var(--accent-soft);
 }
 
+/* Содержимое вкладки */
 .tab-panel {
+  /* Внутренние отступы: 1.1rem 1.25rem 1.3rem */
   padding: 1.1rem 1.25rem 1.3rem;
 }
 
+/* Внутренний блок вкладки */
 .tab-panel > div {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
 }
 
+/* Вводный текст панели */
 .panel-lead {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Размер шрифта: 0.93rem */
   font-size: 0.93rem;
+  /* Максимальная ширина: 62ch */
   max-width: 62ch;
 }
 
+/* Блок добавления медиа */
 .add-media {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
 }
 
+/* Ряд поля и кнопки */
 .add-media-row {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Выравнивание дочерних элементов поперёк оси: flex-start */
   align-items: flex-start;
 }
 
+/* Поле ссылки/кода */
 .add-media textarea {
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
   min-width: 0;
+  /* Минимальная высота: 46px */
   min-height: 46px;
+  /* Максимальная высота: 140px */
   max-height: 140px;
+  /* Внутренние отступы: 0.7rem 0.85rem */
   padding: 0.7rem 0.85rem;
+  /* Можно ли тянуть размер мышью: vertical */
   resize: vertical;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): inherit */
   font: inherit;
+  /* Размер шрифта: 0.95rem */
   font-size: 0.95rem;
+  /* Рамка: 1px solid var(--border-strong) */
   border: 1px solid var(--border-strong);
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface) */
   background: var(--surface);
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
+/* Поле ссылки в фокусе */
 .add-media textarea:focus {
+  /* Цвет рамки: var(--accent) */
   border-color: var(--accent);
+  /* Тень: var(--focus) */
   box-shadow: var(--focus);
+  /* Без стандартной обводки фокуса (своё кольцо — через box-shadow) */
   outline: none;
 }
 
+/* Маленькая кнопка в ряду */
 .add-media-row .btn.small {
+  /* Минимальная высота: 46px */
   min-height: 46px;
 }
 
+/* Плейлист */
 .playlist {
+  /* Без маркеров списка */
   list-style: none;
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Внутренние отступы: 0 */
   padding: 0;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 2px */
   gap: 2px;
+  /* Максимальная высота: 220px */
   max-height: 220px;
+  /* Прокрутка, если не помещается */
   overflow: auto;
 }
 
+/* Пункт плейлиста */
 .playlist li {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Скругление углов: var(--r-sm) */
   border-radius: var(--r-sm);
 }
 
+/* Текущий пункт */
 .playlist li.is-current {
+  /* Фон: var(--accent-soft) */
   background: var(--accent-soft);
 }
 
+/* Кнопка выбора в плейлисте */
 .playlist-item {
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
   min-width: 0;
+  /* Внутренние отступы: 0.45rem 0.6rem */
   padding: 0.45rem 0.6rem;
+  /* Без рамки */
   border: 0;
+  /* Фон: прозрачный */
   background: none;
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): inherit */
   font: inherit;
+  /* Выравнивание текста: left */
   text-align: left;
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
 }
 
+/* Название в плейлисте — в одну строку */
 .playlist-item span {
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
+  /* Не поместившийся текст обрезается многоточием */
   text-overflow: ellipsis;
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
 }
 
+/* Поле в строку с подписью */
 .inline-field {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.75rem */
   gap: 0.75rem;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
 }
 
+/* Форма «перейти к шагу» */
 .jump {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
+  /* Расстояние между дочерними элементами: 0.75rem */
   gap: 0.75rem;
 }
 
+/* Поле номера шага */
 .jump input {
+  /* Ширина: 7rem */
   width: 7rem;
 }
 
+/* Шпаргалка по клавишам */
 .keys {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Размер шрифта: 0.85rem */
   font-size: 0.85rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Межстрочный интервал: 2 */
   line-height: 2;
 }
 
+/* Изображение клавиши */
 kbd {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 0.8rem var(--text-font) */
   font: 600 0.8rem var(--text-font);
+  /* Внутренние отступы: 0.1rem 0.45rem */
   padding: 0.1rem 0.45rem;
+  /* Рамка: 1px solid var(--border-strong) */
   border: 1px solid var(--border-strong);
+  /* Толщина нижней рамки: 2px */
   border-bottom-width: 2px;
+  /* Скругление углов: 6px */
   border-radius: 6px;
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
+  /* Цвет текста: var(--text) */
   color: var(--text);
 }
 
 /* Кино: сцена на весь экран, шаг — поверх фильма в углу */
+/* Сцена в полноэкранном режиме … */
 .weave-stage:fullscreen,
+/* … и в запасном режиме кино — на весь экран */
 .weave.is-cinema .weave-stage {
+  /* Закреплено относительно окна — не прокручивается */
   position: fixed;
+  /* Отступы со всех сторон: 0 — растянуть на весь родитель */
   inset: 0;
+  /* Порядок наложения (больше — выше): 1000 */
   z-index: 1000;
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Направление ряда: column */
   flex-direction: column;
+  /* Распределение дочерних элементов вдоль оси: center */
   justify-content: center;
+  /* Без рамки */
   border: 0;
+  /* Скругление углов: 0 */
   border-radius: 0;
+  /* Фон: #000 */
   background: #000;
 }
 
+/* Видео в полноэкранном режиме: … */
 .weave-stage:fullscreen .media-screen.is-video iframe,
+/* … встроенный плеер и файл, … */
 .weave-stage:fullscreen .media-screen.is-video video,
+/* … и в запасном режиме кино … */
 .weave.is-cinema .media-screen.is-video iframe,
+/* … занимают всё, кроме панели шага */
 .weave.is-cinema .media-screen.is-video video {
+  /* Ширина: 100vw */
   width: 100vw;
+  /* Высота: 100vh */
   height: 100vh;
+  /* Максимальная высота: none */
   max-height: none;
+  /* Пропорции: auto */
   aspect-ratio: auto;
+  /* Как картинка заполняет рамку: contain */
   object-fit: contain;
 }
 
+/* Панель под видео в полноэкранном режиме … */
 .weave-stage:fullscreen .stage-bar,
+/* … и в запасном — скрыта (её заменяет панель кино) */
 .weave.is-cinema .stage-bar {
+  /* Скрыть элемент */
   display: none;
 }
 
+/* Панель шага поверх видео в режиме кино */
 .cinema-hud {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступ от верха: max(16px, env(safe-area-inset-top)) */
   top: max(16px, env(safe-area-inset-top));
+  /* Отступ справа: max(16px, env(safe-area-inset-right)) */
   right: max(16px, env(safe-area-inset-right));
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
+  /* Минимальная ширина: 340px */
   min-width: 340px;
+  /* Внутренние отступы: 0.85rem 1rem 0.9rem 1.2rem */
   padding: 0.85rem 1rem 0.9rem 1.2rem;
+  /* Скругление углов: 22px */
   border-radius: 22px;
+  /* Фон: rgba(8, 10, 14, 0.74) */
   background: rgba(8, 10, 14, 0.74);
+  /* Эффект «матового стекла» под элементом: blur(14px) */
   backdrop-filter: blur(14px);
+  /* То же для Safari */
   -webkit-backdrop-filter: blur(14px);
+  /* Рамка: 1px solid rgba(255, 255, 255, 0.12) */
   border: 1px solid rgba(255, 255, 255, 0.12);
+  /* Цвет текста: #fff */
   color: #fff;
+  /* Тень: 0 20px 50px -20px rgba(0, 0, 0, 0.9) */
   box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.9);
 }
 
+/* Тонкая полоса прогресса панели кино */
 .hud-progress {
+  /* Высота: 4px */
   height: 4px;
+  /* Скругление углов: 2px */
   border-radius: 2px;
+  /* Фон: rgba(255, 255, 255, 0.16) */
   background: rgba(255, 255, 255, 0.16);
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
 }
 
+/* Заполненная часть */
 .hud-progress span {
+  /* Блочный элемент на всю ширину */
   display: block;
+  /* Высота: 100% */
   height: 100%;
+  /* Фон: #8ea0ff */
   background: #8ea0ff;
 }
 
+/* Ряд панели кино */
 .hud-row {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
 }
 
+/* Компактная строка шага */
 .weave-step.is-compact {
+  /* Размер шрифта: 2rem */
   font-size: 2rem;
+  /* Цвет текста: #fff */
   color: #fff;
 }
 
+/* Гвоздь «откуда» … */
 .weave-step.is-compact .nail.from,
+/* … и стрелка в компактной строке — мельче */
 .weave-step.is-compact .thread {
+  /* Цвет текста: #b6bfcd */
   color: #b6bfcd;
 }
 
+/* Гвоздь «куда» в компактной строке */
 .weave-step.is-compact .nail.to {
+  /* Цвет текста: #8ea0ff */
   color: #8ea0ff;
 }
 
+/* Счётчик шагов в панели кино */
 .hud-count {
+  /* Цвет текста: #b6bfcd */
   color: #b6bfcd;
+  /* Размер шрифта: 0.85rem */
   font-size: 0.85rem;
+  /* Цифры одинаковой ширины — числа не «прыгают» при смене */
   font-variant-numeric: tabular-nums;
 }
 
+/* Кнопки панели кино */
 .hud-buttons {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Расстояние между дочерними элементами: 0.35rem */
   gap: 0.35rem;
+  /* Внешний отступ слева: auto */
   margin-left: auto;
 }
 
+/* Кнопка панели кино */
 .hud-btn {
+  /* Строчная сетка */
   display: inline-grid;
+  /* Выравнивание содержимого ячеек: center */
   place-items: center;
+  /* Ширина: 40px */
   width: 40px;
+  /* Высота: 40px */
   height: 40px;
+  /* Без рамки */
   border: 0;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Фон: rgba(255, 255, 255, 0.12) */
   background: rgba(255, 255, 255, 0.12);
+  /* Цвет текста: #fff */
   color: #fff;
+  /* Курсор-«рука» — можно нажать */
   cursor: pointer;
 }
 
+/* Кнопка панели кино под курсором */
 .hud-btn:hover:not(:disabled) {
+  /* Фон: rgba(255, 255, 255, 0.22) */
   background: rgba(255, 255, 255, 0.22);
 }
 
+/* Неактивная кнопка панели кино */
 .hud-btn:disabled {
+  /* Непрозрачность: 0.35 */
   opacity: 0.35;
 }
 
+/* Главная кнопка панели кино */
 .hud-btn.play {
+  /* Ширина: 48px */
   width: 48px;
+  /* Высота: 48px */
   height: 48px;
+  /* Фон: #5b72ff */
   background: #5b72ff;
 }
 
+/* Экраны уже 1100 px */
 @media (max-width: 1100px) {
+  /* Экран плетения — колонки уже */
   .weave {
+    /* Колонки сетки: minmax(0, 1fr) 320px */
     grid-template-columns: minmax(0, 1fr) 320px;
   }
 
+  /* Расход лески — скрыт (не помещается) */
   .thread-used {
+    /* Скрыть элемент */
     display: none;
   }
 }
 
 /* Телефон и узкий экран: шаг прилипает сверху, под ним фильм, схема, музыка, настройки */
+/* Экраны уже 900 px (планшет, телефон) */
 @media (max-width: 900px) {
+  /* Экран плетения — одна колонка */
   .weave {
+    /* Колонки сетки: minmax(0, 1fr) */
     grid-template-columns: minmax(0, 1fr);
+    /* Именованные области сетки: none */
     grid-template-areas: none;
   }
 
+  /* Прямые потомки экрана … */
   .weave > *,
+  /* … и правой колонки — не шире экрана */
   .weave-rail > * {
+    /* В какой области сетки стоит элемент: auto */
     grid-area: auto;
   }
 
+  /* Правая колонка — части в общий поток */
   .weave-rail {
+    /* Сам элемент не рисуется, только его содержимое */
     display: contents;
   }
 
+  /* Верхняя строка — компактнее */
   .weave-top {
+    /* Порядок в ряду: 1 */
     order: 1;
   }
 
+  /* Карточка шага — сразу под верхней строкой */
   .step-card {
+    /* Порядок в ряду: 2 */
     order: 2;
   }
 
+  /* Сцена */
   .weave-stage {
+    /* Порядок в ряду: 3 */
     order: 3;
   }
 
+  /* Схема в колонке */
   .rail-board {
+    /* Порядок в ряду: 4 */
     order: 4;
   }
 
+  /* Музыка */
   .music-dock {
+    /* Порядок в ряду: 5 */
     order: 5;
   }
 
+  /* Настройки */
   .weave-settings {
+    /* Порядок в ряду: 6 */
     order: 6;
   }
 
+  /* С видео карточка шага прилипает к низу экрана */
   .has-video .step-card {
+    /* Прилипает к краю при прокрутке */
     position: sticky;
+    /* Отступ от верха: 74px */
     top: 74px;
+    /* Порядок наложения (больше — выше): 5 */
     z-index: 5;
+    /* Внутренние отступы: 0.85rem 1rem 0.9rem */
     padding: 0.85rem 1rem 0.9rem;
   }
 
+  /* Строка шага в прилипшей карточке */
   .has-video .step-card .weave-step {
+    /* Размер шрифта: 2rem */
     font-size: 2rem;
   }
 
+  /* В прилипшей карточке скрыты подсказка … */
   .has-video .step-card .weave-hint,
+  /* … и скорость */
   .has-video .step-card .speed {
+    /* Скрыть элемент */
     display: none;
   }
 
+  /* Строка шага с видео — размер от ширины карточки */
   .has-video .step-card .weave-step {
+    /* Внешний отступ снизу: 0.7rem */
     margin-bottom: 0.7rem;
   }
 
+  /* Круглые кнопки с видео — меньше */
   .has-video .round-btn {
+    /* Ширина: 46px */
     width: 46px;
+    /* Высота: 46px */
     height: 46px;
   }
 
+  /* Главная кнопка с видео — меньше */
   .has-video .round-btn.play {
+    /* Высота: 50px */
     height: 50px;
   }
 
+  /* Схема на сцене … */
   .stage-board,
+  /* … и картина в колонке — не больше экрана */
   .rail-board .board {
+    /* Ширина: min(100%, 460px) */
     width: min(100%, 460px);
+    /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
     min-width: 0;
   }
 
+  /* Встроенный видеоплеер … */
   .media-screen.is-video iframe,
+  /* … и видеофайл — пропорции 16:9 */
   .media-screen.is-video video {
+    /* Максимальная высота: none */
     max-height: none;
   }
 
+  /* Шпаргалка клавиш — скрыта (на телефоне клавиатуры нет) */
   .keys {
+    /* Скрыть элемент */
     display: none;
   }
 
+  /* Панель кино — компактнее */
   .cinema-hud {
+    /* Отступ слева: 12px */
     left: 12px;
+    /* Отступ справа: 12px */
     right: 12px;
+    /* Минимальная ширина: 0 — разрешает сжиматься в flex/grid */
     min-width: 0;
   }
 }
 
+/* Экраны уже 520 px (телефон) */
 @media (max-width: 520px) {
+  /* Верхняя строка — ещё компактнее */
   .weave-top {
+    /* Внутренние отступы: 0.5rem 0.8rem 0.5rem 0.4rem */
     padding: 0.5rem 0.8rem 0.5rem 0.4rem;
   }
 
+  /* Название портрета — скрыто */
   .weave-title {
+    /* Максимальная ширина: 9ch */
     max-width: 9ch;
   }
 
+  /* Кнопки под видео — мельче */
   .stage-bar .btn {
+    /* Внутренние отступы слева и справа: 0.6rem */
     padding-inline: 0.6rem;
   }
 
+  /* Ряд панели кино — в две строки */
   .hud-row {
+    /* Переносить элементы на новую строку, если не помещаются */
     flex-wrap: wrap;
   }
 }
 
 /* --- адаптив ------------------------------------------------------------- */
+/* Экраны уже 900 px */
 @media (max-width: 900px) {
+  /* Новый портрет … */
   .new-project,
+  /* … и студия — в одну колонку */
   .studio-grid {
+    /* Колонки сетки: 1fr */
     grid-template-columns: 1fr;
   }
 
+  /* Зона загрузки … */
   .drop,
+  /* … и окно кадра — по ширине экрана */
   .editor-view {
+    /* Максимальная ширина: 520px */
     max-width: 520px;
+    /* Внешние отступы: 0 auto */
     margin: 0 auto;
   }
 
+  /* Сцена студии больше не прилипает */
   .stage {
+    /* Позиционирование: static */
     position: static;
   }
 
 }
 
+/* Экраны уже 520 px */
 @media (max-width: 520px) {
+  /* Колонка настроек — без лишних отступов */
   .inspector {
+    /* Внутренние отступы: 1.1rem */
     padding: 1.1rem;
+    /* Скругление углов: var(--r-lg) */
     border-radius: var(--r-lg);
   }
 }
 
+/* Человек попросил систему «меньше анимации» */
 @media (prefers-reduced-motion: reduce) {
+  /* Все элементы, … */
   *,
+  /* … их псевдоэлементы «до» … */
   *::before,
+  /* … и «после»: анимации и переходы почти мгновенные */
   *::after {
+    /* Анимация: none (!important — важнее других правил) */
     animation: none !important;
+    /* Плавное изменение: none (!important — важнее других правил) */
     transition: none !important;
   }
 }
 
 /* --- кисть для правки фона ---------------------------------------------------- */
+/* Окно кадра — точка отсчёта для курсора кисти */
 .editor-view {
+  /* Текст нельзя выделить */
   user-select: none;
+  /* То же для Safari */
   -webkit-user-select: none;
 }
 
+/* В режиме кисти системный курсор скрыт */
 .editor-view.is-painting .editor-canvas {
+  /* Скрыть системный курсор (рисуем свой) */
   cursor: none;
+  /* Какие жесты обрабатывает браузер: none */
   touch-action: none;
 }
 
+/* Кружок-курсор кисти */
 .brush-cursor {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступ слева: 0 */
   left: 0;
+  /* Отступ от верха: 0 */
   top: 0;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Не реагирует на мышь — клики проходят сквозь */
   pointer-events: none;
+  /* Рамка: 2px solid #fff */
   border: 2px solid #fff;
+  /* Тень: 0 0 0 1px rgba(16, 24, 40, 0.65) */
   box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.65);
+  /* Порядок наложения (больше — выше): 2 */
   z-index: 2;
+  /* Подсказка браузеру: будет меняться transform */
   will-change: transform;
 }
 
+/* Кисть «стереть» — красноватый кружок */
 .is-erase .brush-cursor {
+  /* Фон: rgba(225, 60, 90, 0.18) */
   background: rgba(225, 60, 90, 0.18);
 }
 
+/* Кисть «вернуть» — зелёный кружок */
 .is-restore .brush-cursor {
+  /* Фон: rgba(60, 120, 255, 0.18) */
   background: rgba(60, 120, 255, 0.18);
 }
 
+/* Панель кисти */
 .brush-panel {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.7rem */
   gap: 0.7rem;
+  /* Внутренние отступы: 0.9rem */
   padding: 0.9rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
 }
 
+/* Заголовок панели кисти */
 .brush-title {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
 }
 
 /* --- время, катушка, перерывы (плетение) --------------------------------------- */
+/* Прогноз в верхней строке */
 .weave-eta {
+  /* Строчный flex: элемент в строке, содержимое в ряд */
   display: inline-flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.35rem */
   gap: 0.35rem;
+  /* Внутренние отступы: 0.25rem 0.65rem */
   padding: 0.25rem 0.65rem;
+  /* Скругление углов: 999px */
   border-radius: 999px;
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
+  /* Размер шрифта: 0.9rem */
   font-size: 0.9rem;
+  /* Текст в одну строку, без переносов */
   white-space: nowrap;
 }
 
+/* Предупреждение о смене катушки */
 .spool-alert {
+  /* Внешние отступы: -0.4rem 0 1rem */
   margin: -0.4rem 0 1rem;
+  /* Внутренние отступы: 0.6rem 0.8rem */
   padding: 0.6rem 0.8rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: color-mix(in srgb, #f2a93b 18%, var(--surface)) */
   background: color-mix(in srgb, #f2a93b 18%, var(--surface));
+  /* Рамка: 1px solid color-mix(in srgb, #f2a93b 45%, transparent) */
   border: 1px solid color-mix(in srgb, #f2a93b 45%, transparent);
+  /* Размер шрифта: 0.92rem */
   font-size: 0.92rem;
 }
 
+/* Смена катушки — прямо сейчас (ярче) */
 .spool-alert.is-now {
+  /* Фон: color-mix(in srgb, #f2a93b 32%, var(--surface)) */
   background: color-mix(in srgb, #f2a93b 32%, var(--surface));
+  /* Насыщенность шрифта: 500 */
   font-weight: 500;
 }
 
+/* Всплывающее напоминание о перерыве */
 .break-toast {
+  /* Закреплено относительно окна — не прокручивается */
   position: fixed;
+  /* Порядок наложения (больше — выше): 50 */
   z-index: 50;
+  /* Отступ слева: 50% */
   left: 50%;
+  /* Отступ снизу: max(20px, env(safe-area-inset-bottom)) */
   bottom: max(20px, env(safe-area-inset-bottom));
+  /* Преобразование (сдвиг/масштаб/поворот): translateX(-50%) */
   transform: translateX(-50%);
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.4rem */
   gap: 0.4rem;
+  /* Выравнивание элементов в ячейках по горизонтали: start */
   justify-items: start;
+  /* Ширина: min(440px, calc(100vw - 32px)) */
   width: min(440px, calc(100vw - 32px));
+  /* Внутренние отступы: 1rem 1.15rem */
   padding: 1rem 1.15rem;
+  /* Скругление углов: var(--r-lg) */
   border-radius: var(--r-lg);
+  /* Фон: var(--glass) */
   background: var(--glass);
+  /* Эффект «матового стекла» под элементом: blur(16px) */
   backdrop-filter: blur(16px);
+  /* То же для Safari */
   -webkit-backdrop-filter: blur(16px);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-2) */
   box-shadow: var(--shadow-2);
+  /* Анимация: toast-in 0.3s var(--ease) */
   animation: toast-in 0.3s var(--ease);
 }
 
+/* Заголовок напоминания */
 .break-toast strong {
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 1.05rem var(--display) */
   font: 600 1.05rem var(--display);
 }
 
+/* Текст напоминания */
 .break-toast span {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
+/* Кнопки напоминания */
 .break-actions {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Внешний отступ сверху: 0.3rem */
   margin-top: 0.3rem;
 }
 
+/* Анимация появления напоминания */
 @keyframes toast-in {
+  /* Начало: ниже и прозрачное */
   from {
+    /* Непрозрачность: 0 */
     opacity: 0;
+    /* Преобразование (сдвиг/масштаб/поворот): translate(-50%, 12px) */
     transform: translate(-50%, 12px);
   }
 }
 
+/* Панель «Управление» … */
 .control-panel,
+/* … и панель «Время» */
 .time-panel {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1.1rem */
   gap: 1.1rem;
 }
 
+/* Блок панели «Управление» */
 .control-block {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Внутренний отступ снизу: 1.1rem */
   padding-bottom: 1.1rem;
+  /* Рамка снизу: 1px solid var(--border) */
   border-bottom: 1px solid var(--border);
 }
 
+/* Заголовки блоков «Управление» … */
 .control-block h3,
+/* … и «Распечатать и поделиться» */
 .share-block h3 {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.45rem */
   gap: 0.45rem;
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 1rem var(--text-font) */
   font: 600 1rem var(--text-font);
 }
 
+/* «Услышано: …» … */
 .heard,
+/* … и проверка клавиш */
 .key-test {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Внутренние отступы: 0.55rem 0.8rem */
   padding: 0.55rem 0.8rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
+  /* Размер шрифта: 0.93rem */
   font-size: 0.93rem;
 }
 
+/* Показатели времени */
 .time-stats {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Колонки сетки: repeat(auto-fit, minmax(150px, 1fr)) */
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* Расстояние между дочерними элементами: 0.75rem */
   gap: 0.75rem;
+  /* Внешние отступы: 0 */
   margin: 0;
 }
 
+/* Один показатель */
 .time-stats > div {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.15rem */
   gap: 0.15rem;
+  /* Внутренние отступы: 0.8rem 0.9rem */
   padding: 0.8rem 0.9rem;
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Фон: var(--surface-2) */
   background: var(--surface-2);
 }
 
+/* Название показателя */
 .time-stats dt {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Размер шрифта: 0.85rem */
   font-size: 0.85rem;
 }
 
+/* Значение показателя */
 .time-stats dd {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Шрифт (насыщенность, размер/межстрочный, семейство): 600 1.15rem var(--display) */
   font: 600 1.15rem var(--display);
 }
 
+/* Пояснение показателя */
 .time-stats small {
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
+  /* Размер шрифта: 0.8rem */
   font-size: 0.8rem;
 }
 
+/* График по дням */
 .days-chart {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: flex-end */
   align-items: flex-end;
+  /* Расстояние между дочерними элементами: 0.5rem */
   gap: 0.5rem;
+  /* Высота: 110px */
   height: 110px;
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Внутренние отступы: 0.5rem 0.25rem 0 */
   padding: 0.5rem 0.25rem 0;
 }
 
+/* Один день */
 .day {
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Строки сетки: 1fr auto */
   grid-template-rows: 1fr auto;
+  /* Высота: 100% */
   height: 100%;
+  /* Выравнивание элементов в ячейках по горизонтали: center */
   justify-items: center;
+  /* Расстояние между дочерними элементами: 0.3rem */
   gap: 0.3rem;
 }
 
+/* Столбик дня */
 .day-bar {
+  /* Выравнивание самого элемента поперёк оси: end */
   align-self: end;
+  /* Ширина: min(100%, 34px) */
   width: min(100%, 34px);
+  /* Скругление углов: 6px 6px 3px 3px */
   border-radius: 6px 6px 3px 3px;
+  /* Фон: var(--accent) */
   background: var(--accent);
+  /* Непрозрачность: 0.85 */
   opacity: 0.85;
 }
 
+/* Подпись дня */
 .day-label {
+  /* Размер шрифта: 0.75rem */
   font-size: 0.75rem;
+  /* Цвет текста: var(--text-2) */
   color: var(--text-2);
 }
 
 /* --- студия: виды сцены ---------------------------------------------------- */
+/* Сцена студии с режимами */
 .stage-view {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1rem */
   gap: 1rem;
 }
 
+/* Переключатель режимов */
 .stage-modes {
+  /* Выравнивание самого элемента в ячейке: center */
   justify-self: center;
 }
 
+/* Режим «сравнить» */
 .compare {
+  /* Точка отсчёта для вложенных элементов с position: absolute */
   position: relative;
+  /* Текст нельзя выделить */
   user-select: none;
 }
 
+/* Фото поверх картины */
 .compare-photo {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступы со всех сторон: 2% */
   inset: 2%;
+  /* Ширина: 96% */
   width: 96%;
+  /* Высота: 96% */
   height: 96%;
+  /* Скругление углов: 50% */
   border-radius: 50%;
+  /* Как картинка заполняет рамку: cover */
   object-fit: cover;
+  /* Не реагирует на мышь — клики проходят сквозь */
   pointer-events: none;
 }
 
+/* Черта-ручка границы */
 .compare-handle {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступ от верха: 0 */
   top: 0;
+  /* Отступ снизу: 0 */
   bottom: 0;
+  /* Ширина: 2px */
   width: 2px;
+  /* Внешний отступ слева: -1px */
   margin-left: -1px;
+  /* Фон: var(--accent) */
   background: var(--accent);
+  /* Тень: 0 0 0 1px rgba(255, 255, 255, 0.7) */
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  /* Не реагирует на мышь — клики проходят сквозь */
   pointer-events: none;
 }
 
+/* Подписи «Фото» и «Нити» */
 .compare-tag {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступ от верха: 0 */
   top: 0;
+  /* Внутренние отступы: 0.15rem 0.6rem */
   padding: 0.15rem 0.6rem;
+  /* Скругление углов: 999px */
   border-radius: 999px;
+  /* Фон: var(--glass) */
   background: var(--glass);
+  /* Размер шрифта: 0.8rem */
   font-size: 0.8rem;
+  /* Насыщенность шрифта: 600 */
   font-weight: 600;
 }
 
+/* Подпись слева */
 .compare-tag.left {
+  /* Отступ слева: 0 */
   left: 0;
 }
 
+/* Подпись справа */
 .compare-tag.right {
+  /* Отступ справа: 0 */
   right: 0;
 }
 
+/* Невидимый ползунок поверх сравнения */
 .compare-range {
+  /* Положение относительно ближайшего родителя с position */
   position: absolute;
+  /* Отступы со всех сторон: 0 — растянуть на весь родитель */
   inset: 0;
+  /* Ширина: 100% */
   width: 100%;
+  /* Высота: 100% */
   height: 100%;
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Непрозрачность: 0 */
   opacity: 0;
+  /* Вид курсора: ew-resize */
   cursor: ew-resize;
 }
 
+/* Фокус на ползунке — кольцо у соседнего элемента */
 .compare-range:focus-visible + * {
+  /* Без стандартной обводки фокуса (своё кольцо — через box-shadow) */
   outline: none;
 }
 
+/* Режим «на стене» */
 .wall {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.9rem */
   gap: 0.9rem;
 }
 
+/* Комната: стена и плинтус */
 .wall-scene {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Выравнивание содержимого ячеек: center */
   place-items: center;
+  /* Минимальная высота: 420px */
   min-height: 420px;
+  /* Внутренние отступы: 2rem 1rem */
   padding: 2rem 1rem;
+  /* Скругление углов: var(--r-lg) */
   border-radius: var(--r-lg);
+  /* Фон: (значение на следующих строках) */
   background:
+    /* Слой фона 1: тонкая линия плинтуса */
     linear-gradient(to bottom, transparent 82%, rgba(0, 0, 0, 0.08) 82.3%, transparent 83%),
+    /* Слой фона 2: цвет стены */
     linear-gradient(160deg, #e9e6df 0%, #dcd8cf 100%);
+  /* Обрезать всё, что выходит за края */
   overflow: hidden;
 }
 
+/* Комната в тёмной теме */
 :root[data-theme="dark"] .wall-scene {
+  /* Фон: (значение на следующих строках) */
   background:
+    /* Слой фона 1: линия плинтуса (темнее) */
     linear-gradient(to bottom, transparent 82%, rgba(0, 0, 0, 0.25) 82.3%, transparent 83%),
+    /* Слой фона 2: тёмная стена */
     linear-gradient(160deg, #3a3d42 0%, #2c2f33 100%);
 }
 
+/* Картина на стене — с тенью */
 .wall-art {
+  /* Фильтр изображения: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.28)) */
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.28));
 }
 
+/* Выбор расстояния */
 .wall-distances {
+  /* Выравнивание самого элемента в ячейке: center */
   justify-self: center;
 }
 
 /* --- студия: катушка и «поделиться» ------------------------------------------ */
+/* Планировщик катушек */
 .spool-planner {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
+  /* Внешний отступ сверху: 0.4rem */
   margin-top: 0.4rem;
 }
 
+/* Поле длины катушки */
 .spool-planner input {
+  /* Ширина: 7rem */
   width: 7rem;
 }
 
+/* Список смен катушек */
 .spool-list {
+  /* Внешние отступы: 0 */
   margin: 0;
+  /* Внутренний отступ слева: 1.3rem */
   padding-left: 1.3rem;
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.3rem */
   gap: 0.3rem;
+  /* Размер шрифта: 0.93rem */
   font-size: 0.93rem;
 }
 
+/* Панель «Распечатать и поделиться» */
 .share-panel {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 1.2rem */
   gap: 1.2rem;
 }
 
+/* Блок панели */
 .share-block {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.7rem */
   gap: 0.7rem;
 }
 
+/* Блок после блока — с линией сверху */
 .share-block + .share-block {
+  /* Внутренний отступ сверху: 1.1rem */
   padding-top: 1.1rem;
+  /* Рамка сверху: 1px dashed var(--border) */
   border-top: 1px dashed var(--border);
 }
 
+/* Ряд кнопок */
 .share-row {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
 }
 
+/* Готовая открытка или видео */
 .share-result {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.6rem */
   gap: 0.6rem;
+  /* Выравнивание элементов в ячейках по горизонтали: start */
   justify-items: start;
 }
 
+/* Картинка открытки … */
 .share-result img,
+/* … и видео — не шире панели */
 .share-result video {
+  /* Ширина: min(100%, 320px) */
   width: min(100%, 320px);
+  /* Скругление углов: var(--r-md) */
   border-radius: var(--r-md);
+  /* Рамка: 1px solid var(--border) */
   border: 1px solid var(--border);
+  /* Тень: var(--shadow-1) */
   box-shadow: var(--shadow-1);
 }
 
+/* Прогресс записи видео */
 .video-progress {
+  /* Раскладка сеткой (grid) */
   display: grid;
+  /* Расстояние между дочерними элементами: 0.35rem */
   gap: 0.35rem;
 }
 
 /* --- обновление программы -------------------------------------------------- */
+/* Плашка «вышла новая версия» */
 .update-notice {
+  /* Раскладка flex: дочерние элементы в ряд */
   display: flex;
+  /* Выравнивание дочерних элементов поперёк оси: center */
   align-items: center;
+  /* Переносить элементы на новую строку, если не помещаются */
   flex-wrap: wrap;
+  /* Расстояние между дочерними элементами: 0.6rem 0.9rem */
   gap: 0.6rem 0.9rem;
+  /* Внешний отступ снизу: 1rem */
   margin-bottom: 1rem;
+  /* Внутренние отступы: 0.75rem 1rem */
   padding: 0.75rem 1rem;
+  /* Скругление углов: var(--r-lg) */
   border-radius: var(--r-lg);
+  /* Фон: var(--accent-soft) */
   background: var(--accent-soft);
+  /* Цвет текста: var(--text) */
   color: var(--text);
+  /* Рамка: 1px solid color-mix(in srgb, var(--accent) 30%, transparent) */
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
+/* Текст плашки */
 .update-notice span {
+  /* Как элемент растягивается/сжимается в ряду: 1 */
   flex: 1;
+  /* Минимальная ширина: 220px */
   min-width: 220px;
 }
 
+/* Значок плашки */
 .update-notice svg {
+  /* Цвет текста: var(--accent) */
   color: var(--accent);
 }
 
+/* Экраны уже 900 px */
 @media (max-width: 900px) {
+  /* Прогноз — отдельной строкой */
   .weave-eta {
+    /* Порядок в ряду: 5 */
     order: 5;
   }
 
+  /* Комната — ниже */
   .wall-scene {
+    /* Минимальная высота: 300px */
     min-height: 300px;
   }
 }

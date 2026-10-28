@@ -1,45 +1,80 @@
+// Настройки TypeScript (формат JSON с комментариями — TypeScript и Next.js его понимают)
 {
+  // Параметры компилятора
   "compilerOptions": {
+    // Целевая версия JavaScript — современные браузеры
     "target": "ES2022",
+    // Какие встроенные типы доступны
     "lib": [
+      // Браузерный DOM
       "dom",
+      // Перебор коллекций DOM в for…of
       "dom.iterable",
+      // Новейшие возможности JavaScript
       "esnext"
     ],
+    // Только TypeScript, обычный JS в проект не пускаем
     "allowJs": false,
+    // Не проверять типы внутри библиотек (быстрее)
     "skipLibCheck": true,
+    // Строгий режим: больше ошибок ловится до запуска
     "strict": true,
+    // tsc только проверяет типы, сборку делает Next.js
     "noEmit": true,
+    // Совместимость импорта CommonJS-модулей
     "esModuleInterop": true,
+    // Формат модулей — современный ESM
     "module": "esnext",
+    // Поиск модулей как у сборщика (webpack)
     "moduleResolution": "bundler",
+    // Разрешить импорт JSON-файлов
     "resolveJsonModule": true,
+    // Каждый файл компилируется отдельно (требование сборщиков)
     "isolatedModules": true,
+    // JSX в стиле React 17+ (без import React)
     "jsx": "react-jsx",
+    // Кэш проверки между запусками
     "incremental": true,
+    // Плагины для редактора
     "plugins": [
+      // Плагин Next.js
       {
+        // Имя плагина
         "name": "next"
       }
     ],
+    // Псевдонимы путей
     "paths": {
+      // «@/lib/api» = «./lib/api»
       "@/*": [
+        // Корень frontend
         "./*"
       ]
     },
+    // Глобальные типы для тестов
     "types": [
+      // describe/it/expect без импорта
       "vitest/globals",
+      // Проверки вида toBeInTheDocument()
       "@testing-library/jest-dom"
     ]
   },
+  // Какие файлы проверять
   "include": [
+    // Типы Next.js
     "next-env.d.ts",
+    // Все .ts
     "**/*.ts",
+    // Все .tsx
     "**/*.tsx",
+    // Типы маршрутов, которые создаёт Next.js
     ".next/types/**/*.ts",
+    // То же для dev-режима
     ".next/dev/types/**/*.ts"
   ],
+  // Что не проверять
   "exclude": [
+    // Пакеты
     "node_modules"
   ]
 }

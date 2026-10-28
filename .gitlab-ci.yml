@@ -1,109 +1,199 @@
 # CI для GitLab: юнит-тесты, сборка, E2E и API-автотесты на всех языках.
 # Allure-результаты Java-тестов сохраняются артефактом — их можно загрузить в Allure TestOps (allurectl).
 
+# Этапы по порядку: юнит-тесты → сборка → сквозные тесты → API-тесты
 stages: [unit, build, e2e, api]
 
+# Общие переменные для всех задач
 variables:
+  # Кэш pip внутри папки проекта — GitLab умеет его сохранять между запусками
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  # Кэш npm там же
   npm_config_cache: "$CI_PROJECT_DIR/.cache/npm"
 
+# Шаблон Python-задачи (точка в начале — это не задача, а заготовка; &python — якорь YAML)
 .python: &python
+  # Образ с Python 3.12
   image: python:3.12-slim
+  # Сохранять кэш pip
   cache: { key: pip, paths: [.cache/pip] }
 
+# Шаблон Node-задачи
 .node: &node
+  # Образ с Node.js 22
   image: node:22
+  # Сохранять кэш npm
   cache: { key: npm, paths: [.cache/npm] }
+  # Перед каждой задачей
   before_script:
+    # Ставим пакеты фронтенда
     - cd frontend && npm ci
 
 # --- unit ---------------------------------------------------------------------
+# Тесты бэкенда
 backend:pytest:
+  # Берём всё из шаблона Python (<<: — слияние словарей YAML)
   <<: *python
+  # Этап
   stage: unit
+  # Команды
   script:
+    # В папку бэкенда
     - cd backend
+    # Зависимости для тестов
     - pip install -r requirements-dev.txt
+    # Тесты с отчётом JUnit — GitLab покажет результаты прямо в merge request
     - python -m pytest --junitxml=report.xml
+  # Артефакты
   artifacts:
+    # Сохранять всегда, даже при падении
     when: always
+    # Отчёт JUnit
     reports: { junit: backend/report.xml }
 
+# Юнит-тесты фронтенда
 frontend:vitest:
+  # Шаблон Node
   <<: *node
+  # Этап
   stage: unit
+  # Команды
   script:
+    # Проверка типов TypeScript
     - npm run typecheck
+    # Vitest с обычным выводом и отчётом JUnit
     - npx vitest run --reporter=default --reporter=junit --outputFile=vitest.xml
+  # Артефакты
   artifacts:
+    # Всегда
     when: always
+    # Отчёт JUnit
     reports: { junit: frontend/vitest.xml }
 
 # --- build --------------------------------------------------------------------
+# Боевая сборка фронтенда
 frontend:build:
+  # Шаблон Node
   <<: *node
+  # Этап
   stage: build
+  # Команды
   script:
+    # Сборка Next.js
     - npm run build
 
 # --- e2e (Playwright сам поднимает бэкенд и фронтенд) ------------------------
+# Сквозные тесты
 e2e:playwright:
+  # Этап
   stage: e2e
+  # Официальный образ Playwright с браузерами (версия совпадает с пакетом в package.json)
   image: mcr.microsoft.com/playwright:v1.63.0-noble
+  # CI=true — повторы и отчёты; Python в этом образе называется python3
   variables: { CI: "true", PYTHON: python3 }
+  # Подготовка
   before_script:
+    # Ставим pip (в образе его нет)
     - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    # Зависимости бэкенда (в системный Python — образ одноразовый)
     - pip3 install --break-system-packages -q -r backend/requirements.txt
+    # Пакеты фронтенда
     - cd frontend && npm ci
+  # Команды
   script:
+    # Запуск Playwright
     - npx playwright test
+  # Артефакты
   artifacts:
+    # Всегда
     when: always
+    # HTML-отчёт
     paths: [frontend/playwright-report]
+    # JUnit-отчёт
     reports: { junit: frontend/test-results/junit.xml }
 
 # --- API-автотесты на разных языках ------------------------------------------
+# Шаблон API-задачи
 .api: &api
+  # Этап
   stage: api
+  # Запускать после тестов бэкенда (не ждать остальных этапов)
   needs: [backend:pytest]
+  # Адрес бэкенда для тестов
   variables: { STRINGART_API: "http://127.0.0.1:8000" }
 
+# API-тесты на Java (TestNG + Rest Assured + Allure)
 api:java:
+  # Шаблон API
   <<: *api
+  # Образ с Maven и Java 21
   image: maven:3.9-eclipse-temurin-21
+  # Подготовка
   before_script:
+    # pip для запуска бэкенда
     - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    # Поднять бэкенд
     - sh autotests/ci/start-backend.sh
+  # Команды
   script:
+    # Тесты через Maven
     - cd autotests/java && mvn -B test -Dapi.baseUrl=$STRINGART_API
+  # Артефакты
   artifacts:
+    # Всегда
     when: always
+    # Результаты Allure
     paths: [autotests/java/target/allure-results]
+    # JUnit-отчёты Surefire
     reports: { junit: autotests/java/target/surefire-reports/TEST-*.xml }
 
+# API-тесты на Go
 api:go:
+  # Шаблон API
   <<: *api
+  # Образ Go
   image: golang:1.22
+  # Подготовка
   before_script:
+    # pip
     - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    # Бэкенд
     - sh autotests/ci/start-backend.sh
+  # Команды
   script:
+    # Тесты Go
     - cd autotests/go && go test -v ./...
 
+# API-тесты на Ruby
 api:ruby:
+  # Шаблон API
   <<: *api
+  # Образ Ruby
   image: ruby:3.3
+  # Подготовка
   before_script:
+    # pip
     - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    # Бэкенд
     - sh autotests/ci/start-backend.sh
+  # Команды
   script:
+    # Тесты Minitest
     - ruby autotests/ruby/api_test.rb
 
+# API-тесты на C#
 api:csharp:
+  # Шаблон API
   <<: *api
+  # Образ .NET SDK
   image: mcr.microsoft.com/dotnet/sdk:8.0
+  # Подготовка
   before_script:
+    # pip
     - apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null
+    # Бэкенд
     - sh autotests/ci/start-backend.sh
+  # Команды
   script:
+    # Тесты xUnit с отчётом TRX
     - cd autotests/csharp && dotnet test --logger trx

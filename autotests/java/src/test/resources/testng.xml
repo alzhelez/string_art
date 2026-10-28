@@ -1,12 +1,25 @@
+<!-- Набор тестов TestNG — его запускает Surefire (см. pom.xml) -->
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- Набор «String Art API»; verbose=1 — короткий вывод -->
 <suite name="String Art API" verbose="1">
+    <!-- Один тест-прогон «API» -->
     <test name="API">
+        <!-- Классы с тестами: -->
         <classes>
+            <!-- сервер жив, настройки -->
             <class name="ru.stringart.api.HealthAndConfigTest"/>
+            <!-- жизненный цикл проекта -->
             <class name="ru.stringart.api.ProjectLifecycleTest"/>
+            <!-- проверки неверных данных -->
             <class name="ru.stringart.api.ProjectValidationTest"/>
+            <!-- PDF-инструкция -->
             <class name="ru.stringart.api.InstructionsTest"/>
+            <!-- редактор фото -->
             <class name="ru.stringart.api.PhotoEditorTest"/>
+            <!-- подготовка кадра, лицо, корень, маска кистью -->
+            <class name="ru.stringart.api.ImagePipelineTest"/>
+            <!-- шаблон разметки, время и катушка (раньше в набор не входил и не запускался) -->
+            <class name="ru.stringart.api.WorkshopTest"/>
         </classes>
     </test>
 </suite>

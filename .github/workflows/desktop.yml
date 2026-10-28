@@ -2,102 +2,186 @@
 # Собирается на каждый push в main и вручную (Actions → desktop → Run workflow).
 # Готовые файлы — в релизе «desktop-latest»:
 #   https://github.com/<владелец>/<репозиторий>/releases/tag/desktop-latest
+# Название процесса во вкладке Actions
 name: desktop
 
+# Когда запускать
 on:
+  # При отправке коммитов
   push:
+    # Только в ветку main
     branches: [main]
+    # И только если изменилось то, что влияет на программу
     paths: ["backend/**", "frontend/**", "desktop/**", ".github/workflows/desktop.yml"]
+    # А также при создании тега версии v1.2.3
     tags: ["v*"]
+  # Вручную кнопкой
   workflow_dispatch:
 
+# Права токена: запись содержимого — чтобы создавать релиз
 permissions:
+  # Разрешение на запись
   contents: write
 
+# Если пришёл новый коммит, пока идёт сборка, — старую сборку отменяем
 concurrency:
+  # Группа по ветке
   group: desktop-${{ github.ref }}
+  # Отменять незаконченную
   cancel-in-progress: true
 
+# Задачи
 jobs:
+  # Сборка под Windows
   windows:
+    # Название
     name: Windows · Nitegraf.exe
+    # Машина с Windows
     runs-on: windows-latest
+    # Не дольше 40 минут
     timeout-minutes: 40
+    # Переменные для всех шагов
     env:
+      # Версия программы: 1.4.<номер запуска> — растёт с каждой сборкой
       APP_VERSION: 1.4.${{ github.run_number }}
+      # Python в режиме UTF-8 — русские сообщения не ломаются в консоли Windows
       PYTHONUTF8: "1"
+    # Шаги
     steps:
+      # Код
       - uses: actions/checkout@v4
 
+      # Node.js для сборки фронтенда
       - uses: actions/setup-node@v4
+        # Версия и кэш npm
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      # Сборка фронтенда в статические файлы
       - name: Фронтенд → статические файлы
+        # В папке frontend
         working-directory: frontend
+        # Несколько команд подряд
         run: |
+          # Чистая установка пакетов
           npm ci
+          # Статическая сборка для программы
           npm run build:desktop
 
+      # Python
       - uses: actions/setup-python@v5
+        # Версия и кэш pip по файлу зависимостей программы
         with: { python-version: "3.12", cache: pip, cache-dependency-path: desktop/requirements-desktop.txt }
+      # Пакеты для сборки
       - name: Python-пакеты
+        # Установка
         run: python -m pip install -r desktop/requirements-desktop.txt
 
+      # Записать номер версии — программа покажет его и сравнит с релизом
       - name: Номер версии в программу
+        # Командная оболочка PowerShell
         shell: pwsh
+        # Файл без перевода строки и без BOM
         run: Set-Content -Path backend/app/_version.txt -Value $env:APP_VERSION -NoNewline -Encoding utf8NoBOM
 
+      # Собрать .exe
       - name: PyInstaller → dist\Nitegraf
+        # Сборка по описанию
         run: python -m PyInstaller desktop/nitegraf.spec --noconfirm
 
+      # Проверить, что собранная программа действительно работает
       - name: Проверка сборки (сервер, страница, расчёт портрета, PDF)
+        # PowerShell
         shell: pwsh
+        # Сценарий проверки
         run: |
+          # Запускаем программу в режиме «только сервер» на порту 8765 и запоминаем процесс
           $p = Start-Process -FilePath dist\Nitegraf\Nitegraf.exe -ArgumentList '--server-only','--port','8765' -PassThru
+          # Флаг «сервер ответил»
           $ok = $false
+          # До 90 попыток раз в секунду
           for ($i = 0; $i -lt 90; $i++) {
+            # Запрос health; ошибки соединения глотаем — сервер ещё запускается
             try { if ((Invoke-WebRequest http://127.0.0.1:8765/api/health -UseBasicParsing).StatusCode -eq 200) { $ok = $true; break } } catch {}
+            # Пауза секунда
             Start-Sleep -Seconds 1
           }
+          # Не поднялся — печатаем журнал программы и падаем
           if (-not $ok) { Get-Content "$env:LOCALAPPDATA\Nitegraf\nitegraf.log" -ErrorAction SilentlyContinue; throw "сервер не поднялся" }
+          # Главная страница приложения
           $page = Invoke-WebRequest http://127.0.0.1:8765/ -UseBasicParsing
+          # Должна быть страница Next.js
           if ($page.Content -notmatch 'Нитеграф|_next') { throw "главная страница не отдаётся" }
+          # Создаём портрет из тестового фото
           $proj = curl.exe -sf -F "file=@autotests/fixtures/face.jpg" -F "diameter_cm=50" http://127.0.0.1:8765/api/projects | ConvertFrom-Json
+          # У портрета должен быть id
           if (-not $proj.id) { throw "портрет не посчитался" }
+          # Скачиваем PDF-инструкцию
           curl.exe -sf -o test.pdf "http://127.0.0.1:8765/api/projects/$($proj.id)/instructions.pdf"
+          # PDF не меньше 10 КБ
           if ((Get-Item test.pdf).Length -lt 10000) { throw "PDF не сформировался" }
+          # Загружаем фото в редактор
           $img = curl.exe -sf -F "file=@autotests/fixtures/face.jpg" http://127.0.0.1:8765/api/images | ConvertFrom-Json
+          # Лицо должно найтись (проверка, что модель YuNet попала в сборку)
           if ($img.faces.Count -lt 1) { throw "лицо не найдено" }
+          # Настройки программы
           $cfg = Invoke-RestMethod http://127.0.0.1:8765/api/config
+          # Версия совпадает с номером сборки, программа понимает, что она — десктопная
           if ($cfg.app.version -ne $env:APP_VERSION -or -not $cfg.app.desktop) { throw "версия в программе: $($cfg.app.version)" }
+          # Шаблон разметки
           curl.exe -sf -o template.pdf "http://127.0.0.1:8765/api/projects/$($proj.id)/template.pdf"
+          # Не меньше 10 КБ
           if ((Get-Item template.pdf).Length -lt 10000) { throw "шаблон разметки не сформировался" }
+          # Итог в журнал сборки
           Write-Host "OK: портрет $($proj.id), $($proj.line_count) линий, лиц: $($img.faces.Count)"
+          # Останавливаем программу
           Stop-Process -Id $p.Id -Force
 
+      # Портативная версия — папка в zip
       - name: Портативная версия (zip)
+        # PowerShell
         shell: pwsh
+        # Упаковка
         run: Compress-Archive -Path dist\Nitegraf -DestinationPath dist\Nitegraf-portable.zip -CompressionLevel Optimal
 
+      # Установщик
       - name: Установщик (Inno Setup)
+        # PowerShell
         shell: pwsh
+        # Сценарий
         run: |
+          # Путь к компилятору Inno Setup
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          # Не установлен — ставим через менеджер пакетов Chocolatey
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          # Собираем установщик с номером версии
           & $iscc "/DAppVersion=$env:APP_VERSION" desktop\installer.iss
+          # Ошибка компиляции — падаем
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup: ошибка $LASTEXITCODE" }
 
+      # Сохранить файлы как артефакт сборки
       - uses: actions/upload-artifact@v4
+        # Параметры
         with:
+          # Имя артефакта
           name: Nitegraf-windows
+          # Какие файлы
           path: |
+            # Установщик (строки с # — комментарии, их понимает upload-artifact)
             dist/Nitegraf-Setup.exe
+            # Портативная версия
             dist/Nitegraf-portable.zip
 
+      # Опубликовать релиз desktop-latest
       - name: Релиз desktop-latest
+        # Не для pull request
         if: github.event_name != 'pull_request'
+        # PowerShell
         shell: pwsh
+        # Токен для команды gh
         env: { GH_TOKEN: "${{ github.token }}" }
+        # Сценарий
         run: |
+          # Текст описания релиза (многострочная строка PowerShell; внутри неё комментарии ставить нельзя —
+          # они попали бы в текст релиза): версия, что скачивать, как пройти предупреждение SmartScreen, где данные
           $notes = @"
           Нитеграф для Windows 10/11 (64-бит), версия $env:APP_VERSION, коммит $env:GITHUB_SHA.
 
@@ -108,6 +192,8 @@ jobs:
           нажмите «Подробнее» → «Выполнить в любом случае» (у программы нет платной цифровой подписи).
           Портреты хранятся в %LOCALAPPDATA%\Nitegraf и не пропадают при обновлении.
           "@
+          # Удаляем прошлый релиз вместе с тегом (если его нет — ошибку не показываем)
           gh release delete desktop-latest --yes --cleanup-tag 2>$null
+          # Создаём новый релиз с двумя файлами (строка продолжается на следующей — обратная кавычка в конце)
           gh release create desktop-latest dist/Nitegraf-Setup.exe dist/Nitegraf-portable.zip `
             --title "Нитеграф для Windows $env:APP_VERSION" --notes $notes --target $env:GITHUB_SHA --latest

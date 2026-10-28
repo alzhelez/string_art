@@ -1,16 +1,27 @@
+<!-- Проект .NET с тестами; SDK даёт сборку и dotnet test -->
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Свойства проекта: -->
   <PropertyGroup>
+    <!-- Платформа .NET 8 -->
     <TargetFramework>net8.0</TargetFramework>
+    <!-- Включены проверки null — компилятор предупредит о возможном null -->
     <Nullable>enable</Nullable>
+    <!-- Частые using подключаются сами (System, Linq, Tasks…) -->
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Это не библиотека — пакет NuGet не собирается -->
     <IsPackable>false</IsPackable>
+    <!-- Это проект с тестами -->
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
+  <!-- Пакеты: -->
   <ItemGroup>
+    <!-- Инфраструктура запуска тестов -->
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <!-- xUnit — сам фреймворк тестов -->
     <PackageReference Include="xunit" Version="2.9.2" />
+    <!-- Запускатель xUnit для dotnet test и IDE -->
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
 

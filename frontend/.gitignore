@@ -1,7 +1,17 @@
+# Файлы фронтенда, которые не попадают в git
+# Установленные пакеты
 node_modules
+# Сборка Next.js
 .next
+# Типы, которые создаёт Next.js
 next-env.d.ts
+# Кэш TypeScript
 *.tsbuildinfo
+# Результаты Playwright
 test-results
+# Отчёт Playwright
 playwright-report
+# Статическая сборка для программы
 /out/
+# Отчёт о покрытии кода тестами (npm run test:coverage)
+coverage
