@@ -127,6 +127,14 @@ jobs:
         uses: actions/upload-artifact@v4
         # Имя и папка
         with: { name: allure-results, path: autotests/java/target/allure-results }
+      # Java: если упало — вывести причины аннотациями, их видно прямо на странице проверки
+      - if: matrix.lang == 'java' && failure()
+        # Ошибки компиляции Maven и упавшие тесты из отчётов Surefire
+        run: |
+          # Строки о падениях из отчётов Surefire — каждая превращается в аннотацию ::error
+          grep -h -E "<<< FAILURE|Exception|expected|Expecting|but was" autotests/java/target/surefire-reports/*.txt 2>/dev/null | head -n 30 | sed 's/^/::error title=Java::/' || true
+          # Если отчётов нет вовсе — тесты не запустились (компиляция или testng.xml): повторяем и выводим ошибки Maven
+          ls autotests/java/target/surefire-reports/*.txt >/dev/null 2>&1 || (cd autotests/java && mvn -B test -Dapi.baseUrl=$STRINGART_API 2>&1 | grep -E "ERROR|Exception" | head -n 30 | sed 's/^/::error title=Java Maven::/')
       # Go: установить Go
       - if: matrix.lang == 'go'
         # Действие установки Go
