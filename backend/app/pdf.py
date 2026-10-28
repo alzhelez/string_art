@@ -11,7 +11,7 @@ import math
 from typing import Sequence
 
 # ReportLab — библиотека для создания PDF. Цвета: свой, чёрный, белый
-from reportlab.lib.colors import Color, black, white
+from reportlab.lib.colors import Color, HexColor, black, white
 # Размер листа A4 в пунктах
 from reportlab.lib.pagesizes import A4
 # Миллиметр в пунктах PDF — пишем размеры в мм
@@ -30,7 +30,7 @@ from .config import FONTS_DIR, NAILS_PER_SECTOR, SECTORS, THREAD_DIAMETER_MM, TO
 # Углы и метки гвоздей
 from .geometry import nail_angle, nail_label, sector_center_angle
 # Картинка готовой работы для обложки
-from .render import render_image
+from .render import render_image, render_layers_image
 # Расчёт лески и катушки
 from .thread import thread_stats
 
@@ -336,7 +336,13 @@ def _scheme(c: Canvas, name: str, diameter_cm: float, steps: int, spacing_mm: fl
 
 
 # Страницы 3+: таблица шагов с квадратиками для отметок
-def _steps_pages(c: Canvas, name: str, sequence: Sequence[int], steps: int) -> None:
+def _steps_pages(
+    # Холст, название, последовательность, число шагов
+    c: Canvas, name: str, sequence: Sequence[int], steps: int,
+    # Заголовок страниц и цвет нити (для цветного портрета — свой у каждого слоя)
+    title: str = "Шаги плетения", color: str | None = None,
+# Ничего не возвращает — рисует страницы
+) -> None:
     # Ширина колонки
     col_w = (PAGE_W - 2 * MARGIN) / STEP_COLUMNS
     # Верх таблицы (под заголовком)
@@ -349,8 +355,18 @@ def _steps_pages(c: Canvas, name: str, sequence: Sequence[int], steps: int) -> N
         page_end = min(steps, page_start + STEPS_PER_PAGE)
         # Заголовок страницы
         c.setFont(FONT_BOLD, 12)
-        # Текст заголовка
-        c.drawString(MARGIN, PAGE_H - MARGIN - 4 * mm, "Шаги плетения")
+        # Цвет нити — кружком перед заголовком
+        if color:
+            # Заливка цветом нити
+            c.setFillColor(HexColor(color))
+            # Серая обводка — чтобы была видна и белая нить
+            c.setStrokeColor(GREY)
+            # Кружок
+            c.circle(MARGIN + 2 * mm, PAGE_H - MARGIN - 2.8 * mm, 2 * mm, stroke=1, fill=1)
+            # Снова чёрный
+            c.setFillColor(black)
+        # Текст заголовка (с отступом под кружок цвета)
+        c.drawString(MARGIN + (6 * mm if color else 0), PAGE_H - MARGIN - 4 * mm, title)
         # Справа — диапазон шагов
         c.setFont(FONT, 9)
         # Серым
@@ -438,6 +454,134 @@ def build_instructions_pdf(name: str, sequence: Sequence[int], steps: int, diame
     # Страницы с шагами
     _steps_pages(c, name, sequence, steps)
     # Сохранить документ в буфер
+    c.save()
+    # Байты PDF
+    return buf.getvalue()
+
+
+# Обложка цветного портрета: картинка, доска и леска каждого цвета
+def _layers_cover(c: Canvas, name: str, layers: list[dict], diameter_cm: float, board: dict) -> None:
+    # Верхняя граница содержимого
+    y = PAGE_H - MARGIN
+    # Крупный жирный заголовок
+    c.setFont(FONT_BOLD, 22)
+    # Текст заголовка
+    c.drawString(MARGIN, y - 8 * mm, "Портрет из нитей")
+    # Подзаголовок
+    c.setFont(FONT, 12)
+    # Серым
+    c.setFillColor(GREY)
+    # Название и число цветов
+    c.drawString(MARGIN, y - 15 * mm, f"{name} · {len(layers)} цв. нити")
+    # Снова чёрный
+    c.setFillColor(black)
+    # Картинка 11 × 11 см
+    img_size = 110 * mm
+    # Слои для отрисовки: последовательность, число линий, цвет 0..1
+    parts = [(l["sequence"], l["line_count"], [int(l["hex"][i : i + 2], 16) / 255 for i in (1, 3, 5)]) for l in layers]
+    # Цвет доски 0..1
+    board_rgb = [int(board["hex"][i : i + 2], 16) / 255 for i in (1, 3, 5)]
+    # Готовая работа в высоком разрешении
+    img = render_layers_image(parts, diameter_cm, board_rgb, size=1100)
+    # По центру листа под заголовком
+    c.drawImage(ImageReader(img), (PAGE_W - img_size) / 2, y - 22 * mm - img_size, img_size, img_size)
+    # Шаг гвоздей
+    spacing = thread_stats(layers[0]["sequence"], layers[0]["line_count"], diameter_cm).nail_spacing_mm
+    # Общие строки таблицы
+    rows: list[tuple[str, str, str | None]] = [
+        # Диаметр
+        ("Диаметр круга", f"{_fmt(diameter_cm)} см", None),
+        # Шаг гвоздей
+        ("Шаг между гвоздями по дуге", f"{_fmt(spacing, 2)} мм", None),
+        # Цвет доски
+        ("Доска (подложка)", board["name"].lower(), board["hex"]),
+    ]
+    # По строке на каждую нить в порядке плетения
+    for i, layer in enumerate(layers, 1):
+        # Леска этого цвета
+        stats = thread_stats(layer["sequence"], layer["line_count"], diameter_cm)
+        # Катушка
+        spool = f"{stats.spool_m} м" if stats.spool_count == 1 else f"{stats.spool_count} × {stats.spool_m} м"
+        # Строка: номер, цвет, линии, длина, катушка
+        rows.append(
+            # Подпись, значение, цвет кружка
+            (f"Нить {i}: {layer['name'].lower()}", f"{_fmt(layer['line_count'], 0)} линий · {_fmt(stats.total_length_m)} м · катушка {spool}", layer["hex"])
+        )
+    # Последняя строка — старт
+    rows.append(("Старт каждой нити", "гвоздь A1, нити по порядку сверху вниз", None))
+    # Верх таблицы — под картинкой
+    top = y - 30 * mm - img_size
+    # Высота строки
+    row_h = 7.2 * mm
+    # Колонки
+    x_label, x_value = MARGIN + 10 * mm, PAGE_W / 2 - 10 * mm
+    # Рисуем строки
+    for i, (label, value, color) in enumerate(rows):
+        # Высота строки
+        ry = top - i * row_h
+        # «Зебра»
+        if i % 2 == 0:
+            # Цвет подложки
+            c.setFillColor(Color(0.96, 0.95, 0.93))
+            # Подложка
+            c.rect(MARGIN, ry - 2.3 * mm, PAGE_W - 2 * MARGIN, row_h, stroke=0, fill=1)
+            # Снова чёрный
+            c.setFillColor(black)
+        # Кружок цвета, если есть
+        if color:
+            # Цвет нити или доски
+            c.setFillColor(HexColor(color))
+            # Серая обводка
+            c.setStrokeColor(GREY)
+            # Кружок
+            c.circle(MARGIN + 5 * mm, ry + 1.2 * mm, 1.8 * mm, stroke=1, fill=1)
+            # Снова чёрный
+            c.setFillColor(black)
+        # Подпись
+        c.setFont(FONT, 10)
+        # Пишем подпись
+        c.drawString(x_label, ry, label)
+        # Значение жирным
+        c.setFont(FONT_BOLD, 10)
+        # Пишем значение
+        c.drawString(x_value, ry, value)
+    # Колонтитул
+    _footer(c, name)
+
+
+# PDF цветного портрета: обложка, схема, затем шаги каждой нити отдельно
+def build_layers_pdf(name: str, layers: list[dict], diameter_cm: float, board: dict) -> bytes:
+    # Число шагов каждого слоя в допустимых пределах
+    for layer in layers:
+        # Проверка
+        if not 1 <= layer["line_count"] <= len(layer["sequence"]) - 1:
+            # Ошибка
+            raise ValueError("Некорректное количество шагов")
+    # Шрифты
+    _register_fonts()
+    # Буфер
+    buf = io.BytesIO()
+    # Документ A4
+    c = Canvas(buf, pagesize=A4)
+    # Заголовок документа
+    c.setTitle(f"Портрет из нитей — {name}")
+    # Автор
+    c.setAuthor("String Art Studio")
+    # Обложка
+    _layers_cover(c, name, layers, diameter_cm, board)
+    # Конец страницы
+    c.showPage()
+    # Шаг гвоздей
+    spacing = thread_stats(layers[0]["sequence"], layers[0]["line_count"], diameter_cm).nail_spacing_mm
+    # Схема (число шагов — у первой нити)
+    _scheme(c, name, diameter_cm, layers[0]["line_count"], spacing)
+    # Конец страницы
+    c.showPage()
+    # Шаги каждой нити
+    for i, layer in enumerate(layers, 1):
+        # Свой заголовок и цвет
+        _steps_pages(c, name, layer["sequence"], layer["line_count"], f"Нить {i} из {len(layers)}: {layer['name'].lower()}", layer["hex"])
+    # Сохранить
     c.save()
     # Байты PDF
     return buf.getvalue()

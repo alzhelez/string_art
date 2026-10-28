@@ -165,6 +165,20 @@ function rint(v: number): number {
 
 // Автоуровни (как на бэкенде)
 export function autoLevels(gray: Float32Array, cutoff = AUTO_LEVELS_CUTOFF): Float32Array {
+  // Границы растяжения
+  const bounds = levelBounds(gray, cutoff);
+  // Однотонная картинка — без изменений
+  if (!bounds) return Float32Array.from(gray);
+  // Нижняя и верхняя границы
+  const [lo, hi] = bounds;
+  // Коэффициент растяжения
+  const k = 255 / (hi - lo);
+  // Растягиваем и обрезаем
+  return gray.map((v) => clamp((v - lo) * k, 0, 255));
+}
+
+// Границы автоуровней [lo, hi] — общие для серого и цветного кадра; null — растягивать нечего
+export function levelBounds(gray: Float32Array, cutoff = AUTO_LEVELS_CUTOFF): [number, number] | null {
   // Гистограмма 256 значений
   const hist = new Float64Array(256);
   // Считаем пиксели каждой яркости
@@ -191,12 +205,60 @@ export function autoLevels(gray: Float32Array, cutoff = AUTO_LEVELS_CUTOFF): Flo
     // Первая яркость, где накоплено ≥ 99 %
     if (hi === 256 && cum >= highTarget) hi = i;
   }
-  // Однотонная картинка — без изменений
-  if (hi <= lo) return Float32Array.from(gray);
-  // Коэффициент растяжения
-  const k = 255 / (hi - lo);
-  // Растягиваем и обрезаем
-  return gray.map((v) => clamp((v - lo) * k, 0, 255));
+  // Однотонная картинка — растягивать нечего
+  if (hi <= lo) return null;
+  // Границы
+  return [lo, hi];
+}
+
+// Цветной кадр для цветных портретов (как photo.prepare_color на бэкенде): RGBA 0..255
+export function processColor(
+  // Пиксели кадра RGBA, настройки, маска фона, цвет доски [r, g, b] 0..255
+  rgba: ArrayLike<number>, p: Prep, mask: ArrayLike<number> | null, board: [number, number, number],
+// Пиксели RGBA результата
+): Uint8ClampedArray {
+  // Число пикселей
+  const n = rgba.length / 4;
+  // Нужна ли маска
+  const masked = Boolean(p.remove_background && mask);
+  // Серый для границ автоуровней: фон белый, как в одноцветном режиме
+  let gray = toGray(rgba as Uint8ClampedArray);
+  // Маска есть —
+  if (masked) gray = applyMask(gray, mask!);
+  // Границы
+  const bounds = levelBounds(gray);
+  // Коэффициент растяжения (1 — без растяжения)
+  const k = bounds ? 255 / (bounds[1] - bounds[0]) : 1;
+  // Сдвиг
+  const lo = bounds ? bounds[0] : 0;
+  // Результат
+  const out = new Uint8ClampedArray(rgba.length);
+  // Каждый пиксель
+  for (let i = 0; i < n; i++) {
+    // Доля «человека» (без маски — 1)
+    const a = masked ? mask![i] / 255 : 1;
+    // Три канала
+    for (let c = 0; c < 3; c++) {
+      // Растяжение автоуровней
+      let v = clamp((rgba[i * 4 + c] - lo) * k, 0, 255);
+      // Яркость и контраст пользователя
+      v = clamp((v - 128) * (1 + p.contrast) + 128 + p.brightness * 255, 0, 255);
+      // Фон — цвет доски
+      out[i * 4 + c] = rint(v * a + board[c] * (1 - a));
+    }
+    // Непрозрачный
+    out[i * 4 + 3] = 255;
+  }
+  // Готово
+  return out;
+}
+
+// HEX «#rrggbb» → [r, g, b] 0..255
+export function hexRgb(hex: string): [number, number, number] {
+  // Без решётки
+  const h = hex.replace("#", "");
+  // По два символа на канал
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
 }
 
 // Яркость и контраст (как на бэкенде)
@@ -266,8 +328,8 @@ export function drawPrepared(
   p: Prep,
   // Размер
   size = PREP_SIZE,
-  // showRemoved — режим кисти: показывать убранный фон розовым
-  opts: { showRemoved?: boolean } = {},
+  // showRemoved — режим кисти: показывать убранный фон розовым; board — цветной кадр на доске этого цвета
+  opts: { showRemoved?: boolean; board?: string | null } = {},
 // Возвращает успех
 ): boolean {
   // Пиксели кадра
@@ -288,10 +350,6 @@ export function drawPrepared(
       for (let i = 0; i < maskPx.length; i++) maskPx[i] = m[i * 4];
     }
   }
-  // Яркость
-  const gray = toGray(rgba);
-  // Тональная обработка
-  const out = processGray(gray, p, maskPx);
   // Контекст целевого холста
   const ctx = target.getContext("2d");
   // Нет — неудача
@@ -302,6 +360,19 @@ export function drawPrepared(
   target.height = size;
   // Буфер пикселей
   const img = ctx.createImageData(size, size);
+  // Цветной портрет — цветной кадр, фон цвета доски
+  if (opts.board) {
+    // Цветная обработка
+    img.data.set(processColor(rgba, p, maskPx, hexRgb(opts.board)));
+    // Показать
+    ctx.putImageData(img, 0, 0);
+    // Готово
+    return true;
+  }
+  // Яркость
+  const gray = toGray(rgba);
+  // Тональная обработка
+  const out = processGray(gray, p, maskPx);
   // Серое → RGBA
   for (let i = 0; i < out.length; i++) {
     // R = G = B = яркость

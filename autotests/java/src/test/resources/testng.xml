@@ -20,6 +20,8 @@
             <class name="ru.stringart.api.ImagePipelineTest"/>
             <!-- шаблон разметки, время и катушка (раньше в набор не входил и не запускался) -->
             <class name="ru.stringart.api.WorkshopTest"/>
+            <!-- цветные портреты: нити, PATCH нити, шаги и сходство нити -->
+            <class name="ru.stringart.api.ColorLayersTest"/>
         </classes>
     </test>
 </suite>

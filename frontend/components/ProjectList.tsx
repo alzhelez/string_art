@@ -139,6 +139,17 @@ export function ProjectList() {
                     {/* «50 см, 27 октября 2026 г.» */}
                     {num(p.diameter_cm, p.diameter_cm % 1 ? 1 : 0)} см, {date(p.created_at)}
                   </span>
+                  {/* Цветной портрет: кружки цветов нитей */}
+                  {(p.layers?.length ?? 1) > 1 && (
+                    // Ряд кружков с подписью для диктора
+                    <span className="card-threads" aria-label={`Нити: ${p.layers!.map((l) => l.name.toLowerCase()).join(", ")}`}>
+                      {/* Кружок на каждую нить */}
+                      {p.layers!.map((l) => (
+                        // Кружок
+                        <span key={l.index} className="swatch-dot small" style={{ background: l.hex }} aria-hidden="true" />
+                      ))}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

@@ -14,7 +14,9 @@ import { useAutoPrep, usePhotoEditor } from "@/hooks/usePhotoEditor";
 // Адреса и id из адреса
 import { routes, useProjectId } from "@/lib/routes";
 // API и типы
-import { api, ApiError, type Features, type ImageInfo, type Project } from "@/lib/api";
+import { api, ApiError, type Features, type ImageInfo, type Palette, type Project, type ThreadChoice } from "@/lib/api";
+// Выбор нитей
+import { previewBoard, threadChoiceValid, ThreadPicker } from "@/components/ThreadPicker";
 // Числа по-русски
 import { num } from "@/lib/format";
 // Тип настроек кадра
@@ -42,6 +44,8 @@ function PhotoPageInner() {
   const [info, setInfo] = useState<ImageInfo | null>(null);
   // Возможности сервера
   const [features, setFeatures] = useState<Features | null>(null);
+  // Каталог нитей
+  const [palette, setPalette] = useState<Palette | null>(null);
   // Ошибка
   const [error, setError] = useState("");
 
@@ -63,7 +67,9 @@ function PhotoPageInner() {
           return;
         }
         // Фото и возможности сервера параллельно
-        const [img, feats] = await Promise.all([api.image(p.image_id), api.features()]);
+        const [img, feats, pal] = await Promise.all([api.image(p.image_id), api.features(), api.palette().catch(() => null)]);
+        // Каталог нитей
+        setPalette(pal);
         // Фото
         setInfo(img);
         // Возможности
@@ -99,11 +105,11 @@ function PhotoPageInner() {
   // Ещё грузится
   if (!project || !info) return <p className="muted">Загружаем фото…</p>;
   // Редактор
-  return <Editor project={project} info={info} features={features} />;
+  return <Editor project={project} info={info} features={features} palette={palette} />;
 }
 
 // Редактор фото проекта
-function Editor({ project, info, features }: { project: Project; info: ImageInfo; features: Features | null }) {
+function Editor({ project, info, features, palette }: { project: Project; info: ImageInfo; features: Features | null; palette: Palette | null }) {
   // Переходы
   const router = useRouter();
   // Редактор с текущими настройками проекта
@@ -114,6 +120,8 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
   const [busy, setBusy] = useState(false);
   // Ошибка
   const [error, setError] = useState("");
+  // Нити: как в проекте сейчас (цвета — только у цветного режима, чтобы правка кадра их не меняла)
+  const [threads, setThreads] = useState<ThreadChoice>(() => threadsOf(project));
 
   // «Пересчитать портрет»
   const save = async () => {
@@ -126,7 +134,7 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
       // Ждём отправки правок маски
       await editor.flushMask();
       // Новые настройки → пересчёт на сервере
-      await api.updatePhoto(project.id, editor.prep);
+      await api.updatePhoto(project.id, editor.prep, threads);
       // Обратно в студию
       router.push(routes.project(project.id));
     // Ошибка
@@ -156,11 +164,15 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
           // Счётчик правок маски
           maskVersion={editor.maskVersion}
           // Кисть, настройки кадра и их изменение
-          brush={{ ...editor.brush, tool: editor.tool, size: editor.brushSize }} prep={editor.prep} onChange={editor.setPrep} />
+          brush={{ ...editor.brush, tool: editor.tool, size: editor.brushSize }} prep={editor.prep} onChange={editor.setPrep}
+          // Цветной портрет — превью в цвете
+          board={previewBoard(threads, palette)} />
         {/* Правая колонка */}
         <div className="inspector new-form">
           {/* Заголовок */}
           <h1 id="photo-title">Фото для портрета</h1>
+          {/* Нити — можно сменить */}
+          <ThreadPicker palette={palette} value={threads} onChange={setThreads} />
           {/* Панель настроек */}
           <PhotoControls
             // Фото
@@ -227,7 +239,7 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
               // Нажатие
               onClick={save}
               // Неактивна во время работы
-              disabled={busy || editor.maskStatus === "loading" || auto.busy}
+              disabled={busy || editor.maskStatus === "loading" || auto.busy || !threadChoiceValid(threads, palette)}
             >
               {/* Надпись */}
               {busy ? "Считаем линии…" : "Пересчитать портрет"}
@@ -242,4 +254,21 @@ function Editor({ project, info, features }: { project: Project; info: ImageInfo
       </section>
     </div>
   );
+}
+
+// Выбор нитей по текущему проекту: режим, доска и (у цветного) его цвета
+function threadsOf(p: Project): ThreadChoice {
+  // Режим (у старых проектов — одна нить)
+  const mode = p.mode ?? "mono";
+  // Выбор
+  return {
+    // Режим
+    mode,
+    // Цвета — только у цветного портрета
+    colors: mode === "color" ? (p.layers ?? []).map((l) => l.color) : null,
+    // Число цветов — как сейчас
+    color_count: Math.max(2, Math.min(4, p.layers?.length ?? 3)),
+    // Доска — как сейчас
+    board: mode === "mono" ? null : (p.board?.key ?? null),
+  };
 }

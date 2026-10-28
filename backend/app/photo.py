@@ -141,6 +141,20 @@ def apply_mask(gray: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 # Автоуровни: растянуть яркость на весь диапазон 0..255
 def auto_levels(gray: np.ndarray, cutoff: float = AUTO_LEVELS_CUTOFF) -> np.ndarray:
+    # Границы растяжения по гистограмме
+    bounds = levels(gray, cutoff)
+    # Картинка почти однотонная — растягивать нечего
+    if bounds is None:
+        # Возвращаем как есть
+        return gray.astype(np.float32)
+    # Нижняя и верхняя границы
+    lo, hi = bounds
+    # Линейно растягиваем [lo, hi] на [0, 255] и обрезаем выходящие значения
+    return np.clip((gray - lo) * (255.0 / (hi - lo)), 0, 255).astype(np.float32)
+
+
+# Границы автоуровней (lo, hi) — общие для серого и цветного конвейера; None — растягивать нечего
+def levels(gray: np.ndarray, cutoff: float = AUTO_LEVELS_CUTOFF) -> tuple[int, int] | None:
     # Яркости в целые 0..255 (для гистограммы)
     values = np.clip(np.rint(gray), 0, 255).astype(np.int32)
     # Гистограмма: сколько пикселей каждой яркости
@@ -153,12 +167,12 @@ def auto_levels(gray: np.ndarray, cutoff: float = AUTO_LEVELS_CUTOFF) -> np.ndar
     lo = int(np.searchsorted(cum, total * cutoff, side="right"))
     # Верхняя граница: яркость, выше которой 1 % пикселей
     hi = int(np.searchsorted(cum, total * (1 - cutoff), side="left"))
-    # Картинка почти однотонная — растягивать нечего
+    # Границы совпали — картинка однотонная
     if hi <= lo:
-        # Возвращаем как есть
-        return gray.astype(np.float32)
-    # Линейно растягиваем [lo, hi] на [0, 255] и обрезаем выходящие значения
-    return np.clip((gray - lo) * (255.0 / (hi - lo)), 0, 255).astype(np.float32)
+        # Растягивать нечего
+        return None
+    # Границы растяжения
+    return lo, hi
 
 
 # Яркость и контраст, заданные пользователем
@@ -188,6 +202,41 @@ def prepare_gray(
     gray = brightness_contrast(gray, prep.brightness, prep.contrast)
     # Округляем до целых и собираем 8-битную серую картинку
     return Image.fromarray(np.clip(np.rint(gray), 0, 255).astype(np.uint8), mode="L")
+
+
+# Тот же конвейер в цвете — для портретов из нескольких цветных нитей
+def prepare_color(
+    # Оригинал, настройки, маска фона, размер и цвет доски (три числа 0..1)
+    original: Image.Image, prep: Prep, mask: Image.Image | None = None, size: int = PROCESSING_SIZE, board=(1.0, 1.0, 1.0)
+# Возвращает массив size×size×3 со значениями 0..1
+) -> np.ndarray:
+    """Кадр → автоуровни и коррекции (границы — по серому, как в prepare_gray) → фон цвета доски."""
+    # 1. Кадр из цветного оригинала, дробные числа
+    rgb = np.asarray(crop(original.convert("RGB"), prep, size)).astype(np.float32)
+    # Маска фона этим же кадром (если включено удаление фона)
+    alpha = None
+    # Маска нужна и есть —
+    if prep.remove_background and mask is not None:
+        # — доля «человека» в каждой точке, 0..1, с осью канала для умножения
+        alpha = (np.asarray(crop(mask.convert("L"), prep, size)).astype(np.float32) / 255.0)[..., None]
+    # Серый для границ автоуровней: фон белый, как в одноцветном режиме, — тон лица совпадёт
+    gray = to_gray(rgb) if alpha is None else apply_mask(to_gray(rgb), alpha[..., 0] * 255.0)
+    # 2. Границы автоуровней
+    bounds = levels(gray)
+    # Растягиваем все три канала одинаково — цвета не «плывут»
+    if bounds is not None:
+        # Нижняя и верхняя границы
+        lo, hi = bounds
+        # Растяжение [lo, hi] → [0, 255]
+        rgb = np.clip((rgb - lo) * (255.0 / (hi - lo)), 0, 255)
+    # 3. Яркость и контраст пользователя, по каждому каналу
+    rgb = brightness_contrast(rgb, prep.brightness, prep.contrast)
+    # 4. Фон — цвет доски: там нить не нужна
+    if alpha is not None:
+        # Смешиваем фото и доску по маске
+        rgb = rgb * alpha + np.asarray(board, np.float32) * 255.0 * (1.0 - alpha)
+    # Результат 0..1
+    return (rgb / 255.0).astype(np.float32)
 
 
 # --- оригинал ---------------------------------------------------------------

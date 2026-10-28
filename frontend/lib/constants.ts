@@ -13,6 +13,8 @@ export const TOTAL_NAILS = NAILS_PER_SECTOR * SECTORS.length; // 240
 export const MIN_LINES = 1000;
 // Максимум линий (столько считает алгоритм)
 export const MAX_LINES = 5000;
+// Минимум линий одной нити цветного портрета (маленькое цветное пятно — немного линий)
+export const LAYER_MIN_LINES = 100;
 // Ориентир: линий на сантиметр диаметра
 export const LINES_PER_CM = 40;
 

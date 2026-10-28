@@ -33,6 +33,10 @@ import { MAX_LINES, MIN_LINES } from "@/lib/constants";
 import { num } from "@/lib/format";
 // Катушка текстом и расчёт лески
 import { spoolText, threadStats } from "@/lib/thread";
+// Нити цветного портрета: слои, цвета, доска, подписи
+import { boardColor, drawLayers, isMultiLayer, layerTitle, projectLayers } from "@/lib/layers";
+// Наименьшее число линий слоя цветного портрета
+import { LAYER_MIN_LINES } from "@/lib/constants";
 
 // Студия портрета (адрес /project?id=…)
 export default function StudioPage() {
@@ -56,8 +60,12 @@ function StudioPageInner() {
   const [project, setProject] = useState<Project | null>(null);
   // Ошибка
   const [error, setError] = useState("");
-  // Число линий (меняется ползунком мгновенно, сохраняется с задержкой)
-  const [lines, setLines] = useState(0);
+  // Число линий каждой нити (меняется ползунком мгновенно, сохраняется с задержкой)
+  const [layerLines, setLayerLines] = useState<number[]>([]);
+  // Какую нить настраивает ползунок
+  const [layerIndex, setLayerIndex] = useState(0);
+  // Число линий выбранной нити
+  const lines = layerLines[layerIndex] ?? 0;
   // Диаметр
   const [diameter, setDiameter] = useState(0);
   // Название
@@ -83,7 +91,7 @@ function StudioPageInner() {
         // Проект
         setProject(p);
         // Линии
-        setLines(p.line_count);
+        setLayerLines(projectLayers(p).map((l) => l.line_count));
         // Диаметр
         setDiameter(p.diameter_cm);
         // Название
@@ -106,7 +114,7 @@ function StudioPageInner() {
       // Запрос
       api
         // Для диаметра
-        .similarity(project.id, diameter)
+        .similarity(project.id, diameter, layerIndex)
         // Успех (если ещё актуально)
         .then((s) => alive && setSimilarity(s))
         // Ошибка — без графика
@@ -121,14 +129,14 @@ function StudioPageInner() {
       clearTimeout(t);
     };
   // Зависимости
-  }, [project, diameter]);
+  }, [project, diameter, layerIndex]);
 
   // Расчёт лески пересчитывается мгновенно в браузере
   const stats = useMemo(
     // Если проект загружен
-    () => (project ? threadStats(project.sequence, lines, diameter) : null),
+    () => (project && lines ? threadStats(projectLayers(project)[layerIndex].sequence, lines, diameter) : null),
     // Зависимости
-    [project, lines, diameter],
+    [project, lines, diameter, layerIndex],
   );
 
   // Ошибка и проекта нет
@@ -153,16 +161,37 @@ function StudioPageInner() {
   // Ещё грузится
   if (!project || !stats) return <p className="muted page-loading">Загружаем портрет…</p>;
 
-  // Пройденный шаг (если линий стало меньше — не больше их числа)
-  const progressStep = Math.min(project.current_step, lines);
+  // Нити портрета
+  const layers = projectLayers(project);
+  // Несколько нитей
+  const multi = isMultiLayer(project);
+  // Нить, которую сейчас плетут
+  const weaveLayer = Math.min(project.current_layer ?? 0, layers.length - 1);
+  // Пройденный шаг этой нити (если линий стало меньше — не больше их числа)
+  const progressStep = Math.min(layers[weaveLayer].current_step, layerLines[weaveLayer] ?? lines);
+  // Нити для рисования с текущими числами линий
+  const drawn = multi ? drawLayers(project, Object.fromEntries(layerLines.map((n, i) => [i, n]))) : undefined;
+  // Расчёт лески каждого цвета
+  const layerStats = layers.map((l, i) => threadStats(l.sequence, layerLines[i] ?? l.line_count, diameter));
+  // Вся леска без запаса (для открытки)
+  const allRawM = layerStats.reduce((sum, st) => sum + st.raw_length_m, 0);
   // Рекомендуемое число линий
   const recommended = similarity?.best_lines;
   // Сменить число линий
   const setLineCount = (v: number) => {
     // Сразу в состояние
-    setLines(v);
-    // Сохранить с задержкой
-    schedule({ line_count: v });
+    setLayerLines((prev) => prev.map((n, i) => (i === layerIndex ? v : n)));
+    // Сохранить с задержкой (у цветного портрета — с номером нити)
+    schedule(multi ? { layer: layerIndex, line_count: v } : { line_count: v });
+  };
+  // Выбрать нить для ползунка: сначала сохранить изменения прежней
+  const selectLayer = async (i: number) => {
+    // Отправить отложенное
+    await flush();
+    // Новая нить
+    setLayerIndex(i);
+    // Кривую сходства пересчитаем для неё
+    setSimilarity(null);
   };
 
   // Скачать PDF
@@ -223,7 +252,7 @@ function StudioPageInner() {
           {/* Нити / сравнение / на стене */}
           <StageView
             // Последовательность
-            sequence={project.sequence}
+            sequence={layers[layerIndex].sequence}
             // Линии
             lines={lines}
             // Диаметр
@@ -232,11 +261,19 @@ function StudioPageInner() {
             name={name}
             // Фото для сравнения
             photoUrl={api.sourceUrl(project.id)}
+            // Все нити цветного портрета
+            layers={drawn}
+            // Цвет доски
+            boardColor={boardColor(project)}
           />
           {/* Пояснение под сценой */}
           <p className="stage-note">
             {/* Текст */}
-            Превью для чёрной лески 0,2 мм на круге {num(diameter, diameter % 1 ? 1 : 0)} см
+            {multi
+              // Несколько нитей
+              ? `Превью: ${layers.length} нити по 0,2 мм на доске «${project.board?.name.toLowerCase() ?? "белая"}», круг ${num(diameter, diameter % 1 ? 1 : 0)} см`
+              // Одна нить
+              : `Превью для чёрной лески 0,2 мм на круге ${num(diameter, diameter % 1 ? 1 : 0)} см`}
           </p>
         </div>
 
@@ -286,7 +323,15 @@ function StudioPageInner() {
               {/* Значок */}
               <Icon name="play" size={18} />
               {/* Надпись */}
-              {progressStep > 1 ? `Продолжить с шага ${num(progressStep)}` : "Начать плетение"}
+              {progressStep <= 1 && weaveLayer === 0
+                // Ещё не начинали
+                ? "Начать плетение"
+                // Начинали —
+                : multi
+                  // — цветной портрет: нить и шаг
+                  ? `Продолжить: нить ${weaveLayer + 1}, шаг ${num(progressStep)}`
+                  // — одна нить: шаг
+                  : `Продолжить с шага ${num(progressStep)}`}
             </Link>
             {/* Скачать PDF */}
             <button type="button" className="btn secondary" onClick={downloadPdf} disabled={downloading}>
@@ -315,14 +360,30 @@ function StudioPageInner() {
 
           {/* Секция «Линии» */}
           <Section title="Линии">
+            {/* У цветного портрета — выбор нити для ползунка */}
+            {multi && (
+              // Ряд нитей
+              <div className="segmented-wide layer-tabs" role="radiogroup" aria-label="Нить">
+                {/* Кнопка на каждую нить */}
+                {layers.map((l, i) => (
+                  // Кнопка
+                  <button key={l.index} type="button" role="radio" aria-checked={layerIndex === i} onClick={() => void selectLayer(i)}>
+                    {/* Кружок цвета */}
+                    <span className="swatch-dot small" style={{ background: l.hex }} aria-hidden="true" />
+                    {/* Номер и цвет */}
+                    {i + 1}. {l.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Ползунок линий */}
             <Slider
               // id
               id="lines"
               // Подпись
-              label="Количество линий"
-              // Минимум
-              min={MIN_LINES}
+              label={multi ? `Линий: ${layerTitle(project, layerIndex).toLowerCase()}` : "Количество линий"}
+              // Минимум: у слоя цветного портрета — 100
+              min={multi ? LAYER_MIN_LINES : MIN_LINES}
               // Максимум
               max={MAX_LINES}
               // Шаг 100
@@ -349,8 +410,13 @@ function StudioPageInner() {
                   // Фрагмент
                   <>
                     {/* Рекомендация с пояснением */}
-                    Рекомендуем <strong>{num(recommended)}</strong> — при этом количестве картина больше всего похожа на
-                    фото: черты лица уже чёткие, а тон ещё не ушёл в черноту.{" "}
+                    Рекомендуем <strong>{num(recommended)}</strong> —{" "}
+                    {/* Пояснение для одной нити или для цветного портрета */}
+                    {multi
+                      // Цветной портрет
+                      ? "при этом количестве линий этой нити картина целиком больше всего похожа на фото."
+                      // Одна нить
+                      : "при этом количестве картина больше всего похожа на фото: черты лица уже чёткие, а тон ещё не ушёл в черноту."}{" "}
                     {/* Кнопка «Поставить», если сейчас другое число */}
                     {lines !== recommended && (
                       // Кнопка-ссылка
@@ -367,6 +433,29 @@ function StudioPageInner() {
 
           {/* Секция «Леска» */}
           <Section title="Леска">
+            {/* У цветного портрета — сколько лески каждого цвета */}
+            {multi && (
+              // Список нитей
+              <ul className="layer-threads" data-testid="layer-threads">
+                {/* Строка на каждую нить */}
+                {layers.map((l, i) => (
+                  // Строка
+                  <li key={l.index}>
+                    {/* Кружок цвета */}
+                    <span className="swatch-dot small" style={{ background: l.hex }} aria-hidden="true" />
+                    {/* Название */}
+                    <span className="layer-name">{l.name}</span>
+                    {/* Линии и длина с запасом */}
+                    <span className="muted">
+                      {/* «2 500 линий · 1 126,7 м» */}
+                      {num(layerLines[i] ?? l.line_count)} линий · {num(layerStats[i].total_length_m, 1)} м
+                    </span>
+                    {/* Катушка */}
+                    <strong>{spoolText(layerStats[i])}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
             {/* Список показателей */}
             <dl className="stats" data-testid="stats">
               {/* Катушка — выделена */}
@@ -407,8 +496,8 @@ function StudioPageInner() {
             </dl>
             {/* Своя катушка */}
             <SpoolPlanner
-              // Последовательность
-              sequence={project.sequence}
+              // Последовательность выбранной нити
+              sequence={layers[layerIndex].sequence}
               // Линии
               lines={lines}
               // Диаметр
@@ -441,10 +530,14 @@ function StudioPageInner() {
               lines={lines}
               // Диаметр
               diameterCm={diameter}
-              // Леска
-              threadM={stats.raw_length_m}
+              // Леска (всех цветов)
+              threadM={allRawM}
               // Сохранить перед скачиванием
               beforeDownload={flush}
+              // Нити цветного портрета
+              threads={drawn}
+              // Цвет доски
+              boardColor={multi ? boardColor(project) : undefined}
             />
           </Section>
 

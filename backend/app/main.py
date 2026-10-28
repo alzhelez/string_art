@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 # Текущая дата — для названия «Портрет от 27.10.2026»
 from datetime import datetime
 # Annotated — тип с дополнительными правилами проверки; Any — любой тип
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 # Кодирование русского имени файла в заголовке скачивания
 from urllib.parse import quote
 
@@ -26,25 +26,27 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 # Разрешение запросов с другого адреса (фронтенд на порту 3000 обращается к API на 8000)
 from fastapi.middleware.cors import CORSMiddleware
+# Массивы (эталон цветного портрета)
+import numpy as np
 # Работа с картинками
 from PIL import Image
 # Pydantic — описание и автоматическая проверка входных/выходных данных
 from pydantic import BaseModel, ConfigDict, Field
 
-# Наши модули: настройки, подготовка фото, база данных
-from . import config, photo, storage
+# Наши модули: настройки, слои цветных портретов, палитра, подготовка фото, база данных
+from . import config, layers as color_layers, palette, photo, storage
 # Алгоритм и предрасчёт линий
 from .algorithm import build_line_cache, generate_sequence
 # Шаг гвоздей по дуге и метки гвоздей
 from .geometry import arc_spacing, nail_label
 # Загрузка картинки, её ошибка, PNG из серой картинки, карта темноты
 from .image_prep import ImageError, gray_png, load_image, target_map
-# PDF-инструкция
-from .pdf import build_instructions_pdf
+# PDF-инструкция: одна нить и цветной портрет
+from .pdf import build_instructions_pdf, build_layers_pdf
 # Шаблон разметки 1:1
 from .template import build_template_pdf
-# Превью картины
-from .render import render_png
+# Превью картины: одна нить и несколько цветных
+from .render import render_layers_png, render_png
 # Сходство с фото и автонастройка
 from .similarity import auto_tone, best_point, project_similarity, similarity_curve
 # Расчёт лески
@@ -180,6 +182,40 @@ class ActivityOut(BaseModel):
     days: list[ActivityDay] = Field(description="По дням, последние 60, по возрастанию даты")
 
 
+# Цвет из каталога: нить или доска
+class SwatchOut(BaseModel):
+    # Ключ латиницей
+    key: str
+    # Название по-русски
+    name: str
+    # Цвет #rrggbb
+    hex: str
+
+
+# Слой портрета — одна нить своего цвета (у портрета из одной нити — один слой)
+class LayerSummary(BaseModel):
+    # Номер слоя по порядку плетения, с 0
+    index: int
+    # Ключ цвета нити
+    color: str
+    # Название цвета
+    name: str
+    # Цвет #rrggbb
+    hex: str
+    # Число линий этого слоя
+    line_count: int
+    # Текущий шаг плетения этого слоя
+    current_step: int
+    # Расчёт лески этого цвета
+    stats: ThreadStatsOut
+
+
+# Слой целиком — с последовательностью гвоздей
+class LayerDetail(LayerSummary):
+    # Гвозди по порядку, первый — A1
+    sequence: list[int]
+
+
 # Проект в списке (без длинной последовательности)
 class ProjectSummary(BaseModel):
     # id
@@ -208,12 +244,22 @@ class ProjectSummary(BaseModel):
     activity: ActivityOut = Field(description="Сколько времени и шагов плели, по дням")
     # Расчёт лески
     stats: ThreadStatsOut
+    # Режим: одна нить, чёрная + белая, цветные
+    mode: str = Field("mono", description="mono — одна чёрная нить, bw — чёрная и белая, color — цветные")
+    # Цвет доски
+    board: SwatchOut
+    # Какой слой сейчас плетут
+    current_layer: int = 0
+    # Слои по порядку плетения (первый повторяет line_count/current_step/stats)
+    layers: list[LayerSummary]
 
 
 # Проект целиком — всё из списка плюс последовательность гвоздей
 class ProjectDetail(ProjectSummary):
     # Последовательность гвоздей
     sequence: list[int] = Field(description="Гвозди по порядку, длина = max_lines + 1, первый — A1")
+    # Слои с последовательностями
+    layers: list[LayerDetail]
 
 
 # Что можно изменить в проекте (PATCH); каждое поле необязательно
@@ -225,8 +271,8 @@ class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     # Диаметр 20…150 см
     diameter_cm: float | None = Field(default=None, ge=config.MIN_DIAMETER_CM, le=config.MAX_DIAMETER_CM)
-    # Число линий 1000…5000
-    line_count: int | None = Field(default=None, ge=config.MIN_LINES, le=config.MAX_LINES)
+    # Число линий: 1000…5000 для одной нити, 100…5000 для слоя цветного портрета (проверяется ниже)
+    line_count: int | None = Field(default=None, ge=palette.LAYER_MIN_LINES, le=config.MAX_LINES)
     # Текущий шаг 1…5000 (дополнительно проверяется по числу линий)
     current_step: int | None = Field(default=None, ge=1, le=config.MAX_LINES)
     # Скорость 0,5…10 с
@@ -236,6 +282,10 @@ class ProjectUpdate(BaseModel):
         # null явно — сбросить
         default=None, ge=10, le=100_000, description="Длина своей катушки, м; null — сбросить (взять стандартную)"
     )
+    # К какому слою относятся line_count и current_step (по умолчанию — к первому)
+    layer: int | None = Field(default=None, ge=0, le=palette.MAX_COLORS - 1, description="Номер слоя для line_count/current_step")
+    # Какой слой сейчас плетут
+    current_layer: int | None = Field(default=None, ge=0, le=palette.MAX_COLORS - 1)
 
 
 # Отметка времени плетения от клиента
@@ -313,6 +363,31 @@ class CreateFromImage(BaseModel):
     diameter_cm: float = Field(config.DEFAULT_DIAMETER_CM, ge=config.MIN_DIAMETER_CM, le=config.MAX_DIAMETER_CM)
     # Настройки кадра
     prep: PrepIn = Field(default_factory=PrepIn)
+    # Режим портрета
+    mode: Literal["mono", "bw", "color"] = "mono"
+    # Цвета нити для цветного режима (пусто — подобрать под фото)
+    colors: list[str] | None = Field(None, max_length=palette.MAX_COLORS, description="Ключи нитей; пусто — подобрать")
+    # Сколько цветов подобрать
+    color_count: int = Field(palette.DEFAULT_COLORS, ge=palette.MIN_COLORS, le=palette.MAX_COLORS)
+    # Цвет доски (пусто — по умолчанию для режима)
+    board: str | None = None
+
+
+# Новый кадр готового портрета; режим и цвета можно поменять (null — оставить как было)
+class PhotoIn(PrepIn):
+    # Режим портрета
+    mode: Literal["mono", "bw", "color"] | None = None
+    # Цвета нити
+    colors: list[str] | None = Field(None, max_length=palette.MAX_COLORS)
+    # Сколько цветов подобрать
+    color_count: int | None = Field(None, ge=palette.MIN_COLORS, le=palette.MAX_COLORS)
+    # Цвет доски
+    board: str | None = None
+
+    # Только настройки кадра — без режима и цветов
+    def to_prep(self) -> photo.Prep:
+        # Поля кадра из общей части
+        return photo.Prep(**self.model_dump(include=set(PrepIn.model_fields)))
 
 
 # Один шаг плетения
@@ -359,16 +434,58 @@ def _activity(log: dict[str, list]) -> dict[str, Any]:
     }
 
 
+# Цвет каталога → ответ API
+def _swatch(item: palette.Swatch) -> dict[str, str]:
+    # Ключ, название, HEX
+    return {"key": item.key, "name": item.name, "hex": item.hex}
+
+
+# Слои проекта: у портрета из одной нити — один чёрный слой из основных полей
+def _layers_of(p: dict[str, Any]) -> list[dict[str, Any]]:
+    # Сохранённые слои (у цветных портретов)
+    if p.get("layers"):
+        # Как есть
+        return p["layers"]
+    # Одна чёрная нить
+    return [{"color": "black", "sequence": p["sequence"], "line_count": p["line_count"], "current_step": p["current_step"]}]
+
+
 # Проект из базы → краткий ответ (без последовательности)
 def _summary(p: dict[str, Any]) -> dict[str, Any]:
     # Расчёт лески для текущих настроек
     stats = thread_stats(p["sequence"], p["line_count"], p["diameter_cm"]).to_dict()
-    # Все поля, кроме длинной последовательности
-    out = {k: v for k, v in p.items() if k != "sequence"}
+    # Все поля, кроме длинных последовательностей
+    out = {k: v for k, v in p.items() if k not in ("sequence", "layers")}
     # Добавляем расчёт лески
     out["stats"] = stats
     # И журнал в формате API
     out["activity"] = _activity(p.get("activity") or {})
+    # Режим (у старых проектов в базе его нет — значит одна нить)
+    out["mode"] = p.get("mode") or "mono"
+    # Цвет доски
+    out["board"] = _swatch(palette.BOARD_BY_KEY.get(p.get("board") or "white", palette.BOARD_BY_KEY["white"]))
+    # Слои без последовательностей, но с расчётом лески каждого цвета
+    out["layers"] = [
+        # Один слой
+        {
+            # Номер
+            "index": i,
+            # Ключ цвета
+            "color": layer["color"],
+            # Название цвета
+            "name": palette.THREAD_BY_KEY[layer["color"]].name,
+            # HEX
+            "hex": palette.THREAD_BY_KEY[layer["color"]].hex,
+            # Число линий
+            "line_count": layer["line_count"],
+            # Текущий шаг
+            "current_step": layer["current_step"],
+            # Леска этого цвета
+            "stats": thread_stats(layer["sequence"], layer["line_count"], p["diameter_cm"]).to_dict(),
+        }
+        # Для каждого слоя
+        for i, layer in enumerate(_layers_of(p))
+    ]
     # Готово
     return out
 
@@ -379,6 +496,10 @@ def _detail(p: dict[str, Any]) -> dict[str, Any]:
     out = _summary(p)
     # Плюс последовательность
     out["sequence"] = p["sequence"]
+    # И последовательности слоёв
+    for layer, full in zip(out["layers"], _layers_of(p)):
+        # Гвозди слоя
+        layer["sequence"] = full["sequence"]
     # Готово
     return out
 
@@ -576,25 +697,99 @@ def _prepare(image: dict[str, Any], prep: photo.Prep) -> Image.Image:
     return photo.prepare_gray(original, prep, mask)
 
 
-# Подготовка + расчёт последовательности
-def _generate(image: dict[str, Any], prep: photo.Prep) -> tuple[list[int], Image.Image]:
-    """Подготовка фото + расчёт последовательности гвоздей."""
+# Карта важности лица для «Выделить лицо» (или None)
+def _importance(image: dict[str, Any], prep: photo.Prep):
     # «Выделить лицо» без найденного лица — ошибка пользователя
     if prep.face_focus and not image["faces"]:
         # 422 с подсказкой
         raise HTTPException(422, "На фото не найдено лицо — снимите галочку «Выделить лицо»")
-    # Подготовленное фото
-    gray = _prepare(image, prep)
-    # Карта важности (по умолчанию нет)
-    importance = None
-    # Если включено «Выделить лицо»
-    if prep.face_focus:
-        # Самое крупное лицо
-        face = photo.Box(**image["faces"][0])
-        # Карта важности с эллипсом на лице
-        importance = photo.face_importance(image["width"], image["height"], prep, face)
-    # Последовательность и подготовленное фото (оно станет эталоном сходства)
-    return generate_sequence(target_map(gray), importance=importance), gray
+    # Галочка не стоит —
+    if not prep.face_focus:
+        # — карты нет
+        return None
+    # Самое крупное лицо
+    face = photo.Box(**image["faces"][0])
+    # Карта важности с эллипсом на лице
+    return photo.face_importance(image["width"], image["height"], prep, face)
+
+
+# Цветная картинка 0..1 → PNG-байты (эталон цветного портрета)
+def _rgb_png(rgb) -> bytes:
+    # Буфер в памяти
+    buf = io.BytesIO()
+    # Картинка RGB из массива и сохранение
+    Image.fromarray((rgb * 255.0 + 0.5).clip(0, 255).astype("uint8"), mode="RGB").save(buf, format="PNG", optimize=True)
+    # Байты
+    return buf.getvalue()
+
+
+# Подготовка + расчёт: одна нить или несколько цветных слоёв
+def _generate(
+    # Фото, настройки кадра, режим, цвета, сколько цветов подобрать, доска, диаметр
+    image: dict[str, Any], prep: photo.Prep, mode: str, colors: list[str] | None, color_count: int, board: str | None, diameter_cm: float
+# Словарь: sequence, line_count, source_png, mode, board, layers
+) -> dict[str, Any]:
+    """Подготовка фото + расчёт последовательности гвоздей и рекомендуемого числа линий."""
+    # Карта важности лица
+    importance = _importance(image, prep)
+    # Одна чёрная нить — как в первой версии
+    if mode == "mono":
+        # Подготовленное фото
+        gray = _prepare(image, prep)
+        # Последовательность гвоздей
+        sequence = generate_sequence(target_map(gray), importance=importance)
+        # Результат без слоёв
+        return {
+            # Гвозди
+            "sequence": sequence,
+            # Рекомендуемое число линий
+            "line_count": _best_lines(sequence, gray, diameter_cm),
+            # Подготовленное фото — эталон сходства
+            "source_png": gray_png(gray),
+            # Режим
+            "mode": "mono",
+            # Доска всегда белая
+            "board": "white",
+            # Слоёв нет
+            "layers": [],
+        }
+    # Ключ доски: указанный или по умолчанию для режима
+    board_key = board or palette.DEFAULT_BOARD[mode]
+    # Неизвестная доска —
+    if board_key not in palette.BOARD_BY_KEY:
+        # — понятная ошибка
+        raise HTTPException(422, f"Неизвестный цвет доски: {board_key}")
+    # Оригинал
+    original = Image.open(io.BytesIO(image["original"]))
+    # Маска — только если включено «Убрать фон»
+    mask = _mask_for(image) if prep.remove_background else None
+    # Цветное фото того же кадра, фон — цвет доски
+    target = photo.prepare_color(original, prep, mask, board=palette.BOARD_BY_KEY[board_key].rgb)
+    # Нити: заданные или подобранные под фото
+    try:
+        # Палитра
+        keys, board_key = palette.resolve_palette(mode, colors, board_key, target, color_count)
+    # Неверные цвета —
+    except ValueError as exc:
+        # — 422 с текстом
+        raise HTTPException(422, str(exc)) from exc
+    # Слои: последовательности и рекомендуемые числа линий
+    built = color_layers.build_layers(target, board_key, keys, importance, diameter_cm)
+    # Первый слой повторяется в основных полях проекта
+    return {
+        # Гвозди первого слоя
+        "sequence": built[0]["sequence"],
+        # Его число линий
+        "line_count": built[0]["line_count"],
+        # Цветное подготовленное фото — эталон сходства и картинка «до»
+        "source_png": _rgb_png(target),
+        # Режим
+        "mode": mode,
+        # Доска
+        "board": board_key,
+        # Все слои
+        "layers": built,
+    }
 
 
 # --- Маршруты ---------------------------------------------------------------
@@ -724,6 +919,8 @@ def get_config() -> dict[str, Any]:
         },
         # Состояние модели удаления фона
         "background": photo.engine.status(),
+        # Нити, цвета доски и режимы для цветных портретов
+        "palette": palette.catalog(),
     }
 
 
@@ -772,7 +969,12 @@ def create_project_from_image(body: CreateFromImage) -> dict[str, Any]:
     # Название или «Портрет от <дата>»
     name = (body.name or "").strip() or f"Портрет от {datetime.now():%d.%m.%Y}"
     # Создаём с ограниченными настройками кадра
-    return _create_from(image, name, body.diameter_cm, photo.clamp_prep(body.prep.to_prep()))
+    return _create_from(
+        # Фото, название, диаметр, кадр
+        image, name, body.diameter_cm, photo.clamp_prep(body.prep.to_prep()),
+        # Режим и цвета
+        body.mode, body.colors, body.color_count, body.board,
+    )
 
 
 # Рекомендуемое число линий
@@ -783,9 +985,15 @@ def _best_lines(sequence: list[int], gray: Image.Image, diameter_cm: float) -> i
 
 
 # Общая часть создания проекта
-def _create_from(image: dict[str, Any], name: str, diameter_cm: float, prep: photo.Prep) -> dict[str, Any]:
+def _create_from(
+    # Фото, название, диаметр, настройки кадра
+    image: dict[str, Any], name: str, diameter_cm: float, prep: photo.Prep,
+    # Режим, цвета, число цветов, доска (по умолчанию — одна чёрная нить)
+    mode: str = "mono", colors: list[str] | None = None, color_count: int = palette.DEFAULT_COLORS, board: str | None = None,
+# Полный ответ API
+) -> dict[str, Any]:
     # Подготовка и расчёт
-    sequence, gray = _generate(image, prep)
+    result = _generate(image, prep, mode, colors, color_count, board, diameter_cm)
     # Сохраняем проект
     project = storage.create_project(
         # Название
@@ -793,17 +1001,23 @@ def _create_from(image: dict[str, Any], name: str, diameter_cm: float, prep: pho
         # Диаметр с точностью до миллиметра
         diameter_cm=round(diameter_cm, 1),
         # Сразу ставим рекомендуемое число линий
-        line_count=_best_lines(sequence, gray, diameter_cm),
+        line_count=result["line_count"],
         # Скорость по умолчанию
         speed_sec=config.DEFAULT_SPEED_SEC,
         # Последовательность
-        sequence=sequence,
+        sequence=result["sequence"],
         # Подготовленное фото
-        source_png=gray_png(gray),
+        source_png=result["source_png"],
         # Ссылка на оригинал
         image_id=image["id"],
         # Настройки кадра
         prep=prep.to_dict(),
+        # Режим
+        mode=result["mode"],
+        # Доска
+        board=result["board"],
+        # Слои
+        layers=result["layers"],
     )
     # Полный ответ
     return _detail(project)
@@ -811,8 +1025,8 @@ def _create_from(image: dict[str, Any], name: str, diameter_cm: float, prep: pho
 
 # Правка фото готового портрета
 @app.put("/api/projects/{project_id}/photo", response_model=ProjectDetail)
-# Тело — новые настройки кадра
-def update_photo(project_id: str, body: PrepIn) -> dict[str, Any]:
+# Тело — новые настройки кадра (и, по желанию, режим и цвета)
+def update_photo(project_id: str, body: PhotoIn) -> dict[str, Any]:
     """Новый кадр/коррекции → схема пересчитывается, прогресс плетения начинается с шага 1."""
     # Проект
     project = _get_or_404(project_id)
@@ -824,20 +1038,32 @@ def update_photo(project_id: str, body: PrepIn) -> dict[str, Any]:
     image = _image_or_404(project["image_id"], with_blobs=True)
     # Новые настройки в допустимых пределах
     prep = photo.clamp_prep(body.to_prep())
+    # Режим: новый или прежний
+    mode = body.mode or project.get("mode") or "mono"
+    # Цвета: новые, иначе прежние (если режим не сменился)
+    colors = body.colors if body.colors is not None else ([l["color"] for l in project["layers"]] if mode == "color" and project.get("mode") == "color" else None)
+    # Доска: новая, иначе прежняя (если режим не сменился)
+    board = body.board or (project.get("board") if mode == project.get("mode") else None)
     # Новый расчёт
-    sequence, gray = _generate(image, prep)
+    result = _generate(image, prep, mode, colors, body.color_count or palette.DEFAULT_COLORS, board, project["diameter_cm"])
     # Сохраняем, сбрасывая прогресс
     updated = storage.replace_photo(
         # Какой проект
         project_id,
         # Новая последовательность
-        sequence=sequence,
+        sequence=result["sequence"],
         # Новое подготовленное фото
-        source_png=gray_png(gray),
+        source_png=result["source_png"],
         # Новые настройки
         prep=prep.to_dict(),
         # Новая рекомендация числа линий (для текущего диаметра)
-        line_count=_best_lines(sequence, gray, project["diameter_cm"]),
+        line_count=result["line_count"],
+        # Режим
+        mode=result["mode"],
+        # Доска
+        board=result["board"],
+        # Слои
+        layers=result["layers"],
     )
     # Проект существует — мы его только что читали
     assert updated is not None
@@ -1086,17 +1312,41 @@ def update_project(project_id: str, body: ProjectUpdate) -> dict[str, Any]:
     if "speed_sec" in fields:
         # До десятой секунды
         fields["speed_sec"] = round(fields["speed_sec"], 1)
+    # Слои проекта (у одной нити — один)
+    layers = _layers_of(project)
+    # Номер слоя, к которому относятся число линий и шаг
+    index = fields.pop("layer", 0)
+    # Такого слоя нет —
+    if index >= len(layers) or fields.get("current_layer", 0) >= len(layers):
+        # — 422
+        raise HTTPException(422, f"У портрета {len(layers)} сл. — номер слоя от 0 до {len(layers) - 1}")
+    # Одна нить: как и раньше, не меньше 1000 линий
+    if not project.get("layers") and fields.get("line_count", config.MIN_LINES) < config.MIN_LINES:
+        # 422
+        raise HTTPException(422, f"Число линий — от {config.MIN_LINES} до {config.MAX_LINES}")
+    # Изменения слоя: число линий и шаг
+    layer_fields = {k: fields.pop(k) for k in ("line_count", "current_step") if k in fields}
+    # Текущий слой
+    layer = layers[index]
     # Число линий после изменения
-    line_count = fields.get("line_count", project["line_count"])
+    line_count = layer_fields.get("line_count", layer["line_count"])
     # Шаг за пределами числа линий
-    if "current_step" in fields and fields["current_step"] > line_count:
+    if "current_step" in layer_fields and layer_fields["current_step"] > line_count:
         # 422
         raise HTTPException(422, f"Шаг должен быть в пределах 1..{line_count}")
     # Линий стало меньше текущего шага
-    if "line_count" in fields and "current_step" not in fields and project["current_step"] > line_count:
+    if "line_count" in layer_fields and "current_step" not in layer_fields and layer["current_step"] > line_count:
         # Подтягиваем шаг к концу
-        fields["current_step"] = line_count  # линий стало меньше — не выходим за конец
-    # Сохраняем
+        layer_fields["current_step"] = line_count  # линий стало меньше — не выходим за конец
+    # У одной нити поля слоя — это основные поля проекта
+    if not project.get("layers"):
+        # Объединяем
+        fields.update(layer_fields)
+    # У цветного портрета — отдельная запись слоя
+    elif layer_fields:
+        # Сохраняем слой
+        storage.update_layer(project_id, index, layer_fields)
+    # Сохраняем остальное
     updated = storage.update_project(project_id, fields)
     # Проект есть
     assert updated is not None
@@ -1139,19 +1389,72 @@ def get_similarity(
     project_id: str,
     # Необязательный другой диаметр («а если сделать 70 см?»)
     diameter_cm: Annotated[float | None, Query(ge=config.MIN_DIAMETER_CM, le=config.MAX_DIAMETER_CM)] = None,
+    # Для цветного портрета — какой слой меняем (остальные остаются как есть)
+    layer: Annotated[int, Query(ge=0, le=palette.MAX_COLORS - 1)] = 0,
 # Ответ — кривая
 ) -> dict[str, Any]:
     """Кривая «сходство с фото ↔ число линий» и рекомендация для диаметра (по умолчанию — текущего)."""
     # Проект
     p = _get_or_404(project_id)
-    # «Версия» последовательности: после правки фото кэш не должен отдавать старую кривую
-    version = format(hash(bytes(p["sequence"])), "x")
     # Подготовленное фото — эталон
     source = storage.get_source_png(project_id)
     # Есть всегда
     assert source is not None
+    # Диаметр для оценки
+    diameter = diameter_cm or p["diameter_cm"]
+    # Портрет из нескольких нитей — кривая картины целиком при изменении одного слоя
+    if p.get("layers"):
+        # Такого слоя нет —
+        if layer >= len(p["layers"]):
+            # — 422
+            raise HTTPException(422, "Нет такого слоя")
+        # Кривая
+        return _layer_similarity(p, source, layer, diameter)
+    # «Версия» последовательности: после правки фото кэш не должен отдавать старую кривую
+    version = format(hash(bytes(p["sequence"])), "x")
     # Кривая (из кэша или посчитать)
-    return project_similarity(project_id, version, p["sequence"], source, diameter_cm or p["diameter_cm"])
+    return project_similarity(project_id, version, p["sequence"], source, diameter)
+
+
+# Запомненные кривые слоёв: (проект, версия, диаметр, слой) → ответ
+_layer_curves: dict[tuple, dict[str, Any]] = {}
+
+
+# Кривая сходства для слоя цветного портрета (из кэша или посчитать)
+def _layer_similarity(p: dict[str, Any], source: bytes, layer: int, diameter_cm: float) -> dict[str, Any]:
+    # Версия: последовательности и числа линий остальных слоёв
+    version = hash(tuple((bytes(l["sequence"]), l["line_count"] if i != layer else 0) for i, l in enumerate(p["layers"])))
+    # Ключ кэша
+    key = (p["id"], version, round(diameter_cm, 1), layer)
+    # Уже считали —
+    if key in _layer_curves:
+        # — отдаём
+        return _layer_curves[key]
+    # Эталон — цветное подготовленное фото 0..1
+    target = np.asarray(Image.open(io.BytesIO(source)).convert("RGB"), dtype=np.float32) / 255.0
+    # Кривая картины целиком
+    curve = color_layers.layer_curve(target, p.get("board") or "white", p["layers"], layer, diameter_cm)
+    # Лучшая точка
+    best_n, best_s = best_point(curve)
+    # Ответ в том же виде, что у одной нити
+    result = {
+        # Диаметр
+        "diameter_cm": round(diameter_cm, 1),
+        # Лучшее число линий слоя
+        "best_lines": best_n,
+        # Лучшая оценка
+        "best_score": best_s,
+        # Точки
+        "curve": [{"lines": n, "score": v} for n, v in curve],
+    }
+    # Кэш не больше 32 кривых —
+    if len(_layer_curves) > 32:
+        # — иначе очищаем целиком
+        _layer_curves.clear()
+    # Запоминаем
+    _layer_curves[key] = result
+    # Ответ
+    return result
 
 
 # Шаги плетения порциями
@@ -1164,12 +1467,20 @@ def get_steps(
     offset: Annotated[int, Query(ge=0)] = 0,
     # Сколько шагов (не больше 1000 за раз)
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    # Какой слой (нить) — у цветного портрета
+    layer: Annotated[int, Query(ge=0, le=palette.MAX_COLORS - 1)] = 0,
 # Ответ — страница шагов
 ) -> dict[str, Any]:
     # Проект
     p = _get_or_404(project_id)
-    # Последовательность и выбранное число линий
-    seq, total = p["sequence"], p["line_count"]
+    # Слои проекта
+    layers = _layers_of(p)
+    # Такого слоя нет —
+    if layer >= len(layers):
+        # — 422
+        raise HTTPException(422, "Нет такого слоя")
+    # Последовательность и выбранное число линий слоя
+    seq, total = layers[layer]["sequence"], layers[layer]["line_count"]
     # Накопленная длина лески после каждого шага
     used = cumulative_lengths_m(seq[: total + 1], p["diameter_cm"])
     # Шаги страницы
@@ -1210,8 +1521,21 @@ def preview_png(
 ) -> Response:
     # Проект
     p = _get_or_404(project_id)
-    # Рисуем
-    png = render_png(p["sequence"], lines or p["line_count"], p["diameter_cm"], size)
+    # Портрет из нескольких нитей — рисуем все слои поверх доски
+    if p.get("layers"):
+        # Слои: последовательность, число линий (у первого — lines, если задано), цвет нити
+        parts = [
+            # Один слой
+            (l["sequence"], (lines or l["line_count"]) if i == 0 else l["line_count"], palette.THREAD_BY_KEY[l["color"]].rgb)
+            # Для каждого слоя
+            for i, l in enumerate(p["layers"])
+        ]
+        # Цветная картинка
+        png = render_layers_png(parts, p["diameter_cm"], palette.BOARD_BY_KEY[p.get("board") or "white"].rgb, size)
+    # Одна нить
+    else:
+        # Рисуем
+        png = render_png(p["sequence"], lines or p["line_count"], p["diameter_cm"], size)
     # Без кэша — зависит от параметров
     return Response(png, media_type="image/png", headers={"Cache-Control": "no-store"})
 
@@ -1279,8 +1603,16 @@ def template_pdf(
 def instructions_pdf(project_id: str) -> Response:
     # Проект
     p = _get_or_404(project_id)
-    # Строим PDF
-    pdf = build_instructions_pdf(p["name"], p["sequence"], p["line_count"], p["diameter_cm"])
+    # Цветной портрет — шаги каждой нити отдельно
+    if p.get("layers"):
+        # Слои с названиями и цветами — из краткого ответа, последовательности — из базы
+        layers = [{**info, "sequence": full["sequence"]} for info, full in zip(_summary(p)["layers"], p["layers"])]
+        # Строим PDF
+        pdf = build_layers_pdf(p["name"], layers, p["diameter_cm"], _summary(p)["board"])
+    # Одна нить
+    else:
+        # Строим PDF
+        pdf = build_instructions_pdf(p["name"], p["sequence"], p["line_count"], p["diameter_cm"])
     # Имя латиницей
     ascii_name = f"string-art-{p['id']}.pdf"
     # Имя по-русски, закодированное для заголовка

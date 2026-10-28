@@ -7,6 +7,8 @@ import { useState } from "react";
 import { num } from "@/lib/format";
 // Картина на холсте
 import { Board } from "../Board";
+// Нить для рисования
+import type { DrawLayer } from "@/lib/layers";
 // Иконки и тип имени иконки
 import { Icon, type IconName } from "../ui/Icon";
 
@@ -48,6 +50,10 @@ export function StageView({
   name,
   // Адрес подготовленного фото
   photoUrl,
+  // Нити цветного портрета
+  layers,
+  // Цвет доски
+  boardColor,
 // Типы свойств
 }: {
   // Последовательность
@@ -60,6 +66,10 @@ export function StageView({
   name: string;
   // Адрес фото
   photoUrl: string;
+  // Нити цветного портрета (если есть — рисуются все)
+  layers?: readonly DrawLayer[];
+  // Цвет доски
+  boardColor?: string;
 // Тело компонента
 }) {
   // Текущий режим
@@ -69,7 +79,7 @@ export function StageView({
   // Выбранное расстояние, м
   const [distance, setDistance] = useState(3);
   // Картина — общая для всех режимов
-  const board = <Board label={`Портрет «${name}», ${lines} линий`} sequence={sequence} lines={lines} diameterCm={diameterCm} />;
+  const board = <Board label={`Портрет «${name}», ${lines} линий`} sequence={sequence} lines={lines} diameterCm={diameterCm} layers={layers} boardColor={boardColor} />;
   // Видимый размер на экране: диаметр × (0,6 м / расстояние), переведённый в CSS-пиксели
   const wallPx = Math.round((diameterCm * 10 * (SCREEN_DISTANCE_M / distance)) / MM_PER_CSS_PX);
 

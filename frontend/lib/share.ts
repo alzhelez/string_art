@@ -5,6 +5,8 @@ import { TOTAL_NAILS } from "./constants";
 import { lineAlpha } from "./draw";
 // Числа по-русски
 import { num } from "./format";
+// Нить для рисования
+import type { DrawLayer } from "./layers";
 // Координаты гвоздей
 import { nailXY } from "./nails";
 
@@ -68,7 +70,7 @@ interface Art {
 
 /** Холст с круглой доской, на который нити дорисовываются по одной (как в жизни). */
 // Создать холст картины
-function createArt(size: number, diameterCm: number): Art {
+function createArt(size: number, diameterCm: number, board: string = BOARD): Art {
   // Новый холст
   const canvas = document.createElement("canvas");
   // Квадрат size × size
@@ -77,8 +79,8 @@ function createArt(size: number, diameterCm: number): Art {
   const ctx = canvas.getContext("2d")!;
   // Радиус доски с маленьким отступом
   const r = size / 2 - size * 0.01;
-  // Белый
-  ctx.fillStyle = BOARD;
+  // Цвет доски (белый у одной нити)
+  ctx.fillStyle = board;
   // Новая фигура
   ctx.beginPath();
   // Круг доски
@@ -95,23 +97,48 @@ function createArt(size: number, diameterCm: number): Art {
   return { canvas, ctx, pts: Array.from({ length: TOTAL_NAILS }, (_, i) => nailXY(i, r, size / 2, size / 2)), drawn: 0 };
 }
 
-// Дорисовать нити до нужного числа (уже нарисованные не трогаем — быстро)
-function drawUpTo(art: Art, sequence: readonly number[], lines: number) {
-  // От уже нарисованных до нужного числа
-  for (; art.drawn < lines && art.drawn + 1 < sequence.length; art.drawn++) {
-    // Откуда
-    const [x0, y0] = art.pts[sequence[art.drawn]];
-    // Куда
-    const [x1, y1] = art.pts[sequence[art.drawn + 1]];
-    // Новая фигура
-    art.ctx.beginPath();
-    // Начало
-    art.ctx.moveTo(x0, y0);
-    // Конец
-    art.ctx.lineTo(x1, y1);
-    // Провести
-    art.ctx.stroke();
+// Дорисовать нити до нужного общего числа (уже нарисованные не трогаем — быстро); нити идут по порядку слоёв
+function drawUpTo(art: Art, threads: readonly DrawLayer[], lines: number) {
+  // Сколько линий в прежних слоях (номер первой линии текущего слоя в общем счёте)
+  let offset = 0;
+  // Слои по порядку
+  for (const t of threads) {
+    // Линий этого слоя
+    const own = Math.min(t.lines, t.sequence.length - 1);
+    // Цвет нити слоя
+    art.ctx.strokeStyle = t.color;
+    // От уже нарисованных до нужного числа, но в пределах слоя
+    for (; art.drawn < lines && art.drawn < offset + own; art.drawn++) {
+      // Номер линии внутри слоя
+      const i = art.drawn - offset;
+      // Откуда
+      const [x0, y0] = art.pts[t.sequence[i]];
+      // Куда
+      const [x1, y1] = art.pts[t.sequence[i + 1]];
+      // Новая фигура
+      art.ctx.beginPath();
+      // Начало
+      art.ctx.moveTo(x0, y0);
+      // Конец
+      art.ctx.lineTo(x1, y1);
+      // Провести
+      art.ctx.stroke();
+    }
+    // Следующий слой начинается после этого
+    offset += own;
   }
+}
+
+// Нити для видео и открытки: заданные слои или одна чёрная из sequence/lines
+function threadsOf(o: { sequence: readonly number[]; lines: number; threads?: readonly DrawLayer[] }): readonly DrawLayer[] {
+  // Слои заданы — их и рисуем
+  return o.threads?.length ? o.threads : [{ sequence: o.sequence, lines: o.lines, color: INK }];
+}
+
+// Сколько всего линий во всех нитях
+function totalLines(threads: readonly DrawLayer[]): number {
+  // Сумма по слоям (не больше длины последовательности)
+  return threads.reduce((sum, t) => sum + Math.min(t.lines, t.sequence.length - 1), 0);
 }
 
 // Дождаться загрузки шрифтов (иначе на первом кадре будет системный шрифт)
@@ -144,6 +171,10 @@ function background(ctx: CanvasRenderingContext2D, w: number, h: number) {
 export interface TimelapseOptions {
   // Последовательность гвоздей
   sequence: readonly number[];
+  // Нити цветного портрета по порядку плетения (если заданы — вместо sequence/lines)
+  threads?: readonly DrawLayer[];
+  // Цвет доски
+  boardColor?: string;
   // Сколько нитей
   lines: number;
   // Диаметр
@@ -189,7 +220,11 @@ export async function recordTimelapse(o: TimelapseOptions): Promise<{ blob: Blob
   // Доска — 78 % кадра
   const boardSize = Math.round(size * 0.78);
   // Холст картины
-  const art = createArt(boardSize, o.diameterCm);
+  const art = createArt(boardSize, o.diameterCm, o.boardColor);
+  // Нити и их общее число
+  const threads = threadsOf(o);
+  // Всего линий во всех нитях
+  const all = totalLines(threads);
   // Доска по центру по горизонтали
   const bx = (size - boardSize) / 2;
   // И с отступом сверху (снизу — место под текст)
@@ -209,9 +244,9 @@ export async function recordTimelapse(o: TimelapseOptions): Promise<{ blob: Blob
   // Нарисовать кадр номер frame
   const paint = (frame: number) => {
     // Сколько нитей на этом кадре (после конца — все)
-    const target = frame >= frames ? o.lines : linesAtFrame(frame, frames, o.lines);
+    const target = frame >= frames ? all : linesAtFrame(frame, frames, all);
     // Дорисовываем нити
-    drawUpTo(art, o.sequence, target);
+    drawUpTo(art, threads, target);
     // Фон
     background(ctx, size, size);
     // Запомнить настройки
@@ -233,7 +268,7 @@ export async function recordTimelapse(o: TimelapseOptions): Promise<{ blob: Blob
       // Шрифт счётчика
       ctx.font = `600 ${Math.round(size / 26)}px 'Golos Text', sans-serif`;
       // «1 200 из 3 000 нитей»
-      ctx.fillText(`${num(target)} из ${num(o.lines)} нитей`, size / 2, size * 0.93);
+      ctx.fillText(`${num(target)} из ${num(all)} нитей`, size / 2, size * 0.93);
       // Финальные кадры
     } else {
       // Шрифт названия
@@ -245,7 +280,7 @@ export async function recordTimelapse(o: TimelapseOptions): Promise<{ blob: Blob
       // Серее
       ctx.fillStyle = "#aeb6c4";
       // Параметры: нити, диаметр (без «,0» для целых), гвозди
-      ctx.fillText(`${num(o.lines)} нитей · ${num(o.diameterCm, o.diameterCm % 1 ? 1 : 0)} см · 240 гвоздей`, size / 2, size * 0.968);
+      ctx.fillText(`${num(all)} нитей · ${num(o.diameterCm, o.diameterCm % 1 ? 1 : 0)} см · 240 гвоздей`, size / 2, size * 0.968);
     }
   };
 
@@ -284,6 +319,10 @@ export async function recordTimelapse(o: TimelapseOptions): Promise<{ blob: Blob
 export interface CardOptions {
   // Последовательность
   sequence: readonly number[];
+  // Нити цветного портрета (если заданы — вместо sequence/lines)
+  threads?: readonly DrawLayer[];
+  // Цвет доски
+  boardColor?: string;
   // Число нитей
   lines: number;
   // Диаметр
@@ -341,9 +380,11 @@ export async function renderCard(o: CardOptions): Promise<Blob> {
   // Размер доски на открытке
   const boardSize = 860;
   // Холст картины
-  const art = createArt(boardSize, o.diameterCm);
+  const art = createArt(boardSize, o.diameterCm, o.boardColor);
+  // Нити портрета
+  const threads = threadsOf(o);
   // Все нити сразу
-  drawUpTo(art, o.sequence, o.lines);
+  drawUpTo(art, threads, totalLines(threads));
   // Запомнить настройки
   ctx.save();
   // Тень
@@ -383,7 +424,7 @@ export async function renderCard(o: CardOptions): Promise<Blob> {
   // Леска: в км, если больше 1000 м
   const km = o.threadM >= 1000 ? `${num(o.threadM / 1000, 1)} км` : `${num(Math.round(o.threadM))} м`;
   // Строка с цифрами
-  ctx.fillText(`${num(o.lines)} нитей · ${km} лески · 240 гвоздей · Ø ${num(o.diameterCm, o.diameterCm % 1 ? 1 : 0)} см`, w / 2, 1140);
+  ctx.fillText(`${num(totalLines(threads))} нитей · ${km} лески · 240 гвоздей · Ø ${num(o.diameterCm, o.diameterCm % 1 ? 1 : 0)} см`, w / 2, 1140);
   // Шрифт подвала
   ctx.font = "400 24px 'Golos Text', sans-serif";
   // Ещё темнее

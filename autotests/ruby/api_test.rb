@@ -618,4 +618,34 @@ class StringArtApiTest < Minitest::Test
     # → 404
     assert_equal '404', other.code
   end
+
+  # TC-API-32: портрет «чёрная + белая» — две нити, PATCH нити, шаги и сходство нити
+  def test_tc_api_32_color_layers
+    # Загружаем фото
+    img = Api.json(Api.upload_image('face.jpg', 'image/jpeg'))
+    # Создаём портрет из двух нитей
+    res = Api.post_json('/api/projects/from-image', image_id: img['id'], mode: 'bw')
+    # → 201
+    assert_equal '201', res.code, res.body
+    # Проект
+    p = Api.json(res)
+    # Запоминаем для удаления
+    @created << p['id']
+    # Режим, доска, нити
+    assert_equal ['bw', 'gray', %w[black white]], [p['mode'], p.dig('board', 'key'), p['layers'].map { |l| l['color'] }.sort]
+    # Первая нить повторяет основные поля
+    assert_equal p['sequence'], p['layers'][0]['sequence']
+    # Вторая нить: 300 линий
+    upd = Api.json(Api.patch("/api/projects/#{p['id']}", layer: 1, line_count: 300))
+    # Сохранилось
+    assert_equal 300, upd['layers'][1]['line_count']
+    # Шаги второй нити
+    steps = Api.json(Api.get("/api/projects/#{p['id']}/steps?layer=1&limit=1"))
+    # Всего 300, начало A1
+    assert_equal [300, 'A1'], [steps['total'], steps['items'][0]['from_label']]
+    # Сходство второй нити — 25 точек
+    assert_equal 25, Api.json(Api.get("/api/projects/#{p['id']}/similarity?layer=1"))['curve'].size
+    # Третьей нити нет → 422
+    assert_equal '422', Api.patch("/api/projects/#{p['id']}", layer: 2, line_count: 300).code
+  end
 end

@@ -13,6 +13,8 @@ import { useAutoAdvance } from "@/hooks/useAutoAdvance";
 import { useVoiceControl } from "@/hooks/useVoiceControl";
 // Тип журнала времени
 import type { Activity } from "@/lib/api";
+// Нить для рисования
+import type { DrawLayer } from "@/lib/layers";
 // Разбор клавиш и тип команды
 import { keyCommand, type Command } from "@/lib/control";
 // Длительность словами и прогноз
@@ -76,6 +78,16 @@ export interface WeavePlayerProps {
   activity?: Activity;
   /** Длина катушки, м: своя или стандартная из расчёта — для плана смены катушек. */
   spoolM?: number;
+  /** Цветной портрет: все нити (прежние рисуются целиком, текущая — по шагам). */
+  layers?: readonly DrawLayer[];
+  /** Номер текущей нити. */
+  activeLayer?: number;
+  /** Цвет доски. */
+  boardColor?: string;
+  /** Подпись текущей нити: «Нить 2 из 3: белая». */
+  layerLabel?: string;
+  /** Следующая нить: показывается кнопка перехода, когда эта нить закончена. */
+  nextLayer?: { label: string; go: () => void };
 }
 
 // Ключ интервала напоминания о перерыве
@@ -206,6 +218,16 @@ export function WeavePlayer({
   activity: initialActivity,
   // Длина катушки
   spoolM,
+  // Нити цветного портрета
+  layers,
+  // Текущая нить
+  activeLayer,
+  // Цвет доски
+  boardColor,
+  // Подпись нити
+  layerLabel,
+  // Следующая нить
+  nextLayer,
 // Тип свойств
 }: WeavePlayerProps) {
   // Ограничить шаг пределами 1…totalSteps
@@ -597,7 +619,18 @@ export function WeavePlayer({
   // Подсказка под шагом
   const hint = finished ? (
     // Готово
-    <span data-testid="finished">Готово: все {num(totalSteps)} шагов пройдены. Закрепите леску узлом.</span>
+    <span data-testid="finished">
+      {/* Сколько пройдено */}
+      Готово: все {num(totalSteps)} шагов пройдены. Закрепите леску узлом.{" "}
+      {/* Есть следующая нить — кнопка перехода */}
+      {nextLayer && (
+        // Кнопка
+        <button type="button" className="link-btn" onClick={nextLayer.go} data-testid="next-layer">
+          {/* Надпись */}
+          Дальше: {nextLayer.label.toLowerCase()}
+        </button>
+      )}
+    </span>
   // Первый шаг
   ) : step === 1 ? (
     // Подсказка про старт
@@ -629,6 +662,12 @@ export function WeavePlayer({
       diameterCm={diameterCm}
       // Текущий шаг — выделить
       activeStep={step}
+      // Все нити цветного портрета
+      layers={layers}
+      // Текущая нить
+      activeLayer={activeLayer}
+      // Цвет доски
+      boardColor={boardColor}
     />
   );
 
@@ -670,6 +709,16 @@ export function WeavePlayer({
         )}
         {/* Название */}
         {title && <span className="weave-title">{title}</span>}
+        {/* Какая нить (у цветного портрета) */}
+        {layerLabel && (
+          // Подпись с кружком цвета
+          <span className="weave-layer" data-testid="weave-layer">
+            {/* Кружок цвета */}
+            {layers && activeLayer !== undefined && <span className="swatch-dot small" style={{ background: layers[activeLayer]?.color }} aria-hidden="true" />}
+            {/* Текст */}
+            {layerLabel}
+          </span>
+        )}
         {/* «Шаг N из M» */}
         <div className="weave-count" data-testid="step-counter">
           {/* Текст */}

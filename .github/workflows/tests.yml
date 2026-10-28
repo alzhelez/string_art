@@ -18,14 +18,14 @@ jobs:
   backend:
     # Название задачи в интерфейсе
     name: Python · pytest
-    # Машина с последней Ubuntu
-    runs-on: ubuntu-latest
+    # Машина с Ubuntu 24.04: версия закреплена, чтобы переход ubuntu-latest на Ubuntu 26 не сломал сборку внезапно
+    runs-on: ubuntu-24.04
     # Шаги задачи
     steps:
       # Скачать код репозитория
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Установить Python
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         # Версия 3.12, кэшировать пакеты pip между запусками
         with: { python-version: "3.12", cache: pip }
       # Зависимости для тестов
@@ -37,14 +37,14 @@ jobs:
   frontend:
     # Название
     name: TypeScript · Vitest + сборка
-    # Машина
-    runs-on: ubuntu-latest
+    # Машина с той же Ubuntu 24.04
+    runs-on: ubuntu-24.04
     # Шаги
     steps:
       # Код
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Node.js
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         # Версия 22, кэш npm по lock-файлу фронтенда
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       # Установка, проверка типов, юнит-тесты и боевая сборка
@@ -54,18 +54,18 @@ jobs:
   e2e:
     # Название
     name: Playwright · UI + API
-    # Машина
-    runs-on: ubuntu-latest
+    # Машина с той же Ubuntu 24.04
+    runs-on: ubuntu-24.04
     # Шаги
     steps:
       # Код
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Python — Playwright сам поднимает бэкенд
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         # Версия и кэш
         with: { python-version: "3.12", cache: pip }
       # Node.js — для фронтенда и Playwright
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         # Версия и кэш
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       # Зависимости бэкенда
@@ -77,7 +77,7 @@ jobs:
         # CI=true включает повтор упавших тестов и отчёты; PYTHON — как называется Python на этой машине
         env: { CI: "true", PYTHON: python }
       # Сохранить HTML-отчёт Playwright
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         # Даже если тесты упали — особенно тогда
         if: always()
         # Имя артефакта и папка
@@ -87,8 +87,8 @@ jobs:
   api:
     # Название с языком из матрицы
     name: API-тесты · ${{ matrix.lang }}
-    # Машина
-    runs-on: ubuntu-latest
+    # Машина с той же Ubuntu 24.04
+    runs-on: ubuntu-24.04
     # Стратегия запуска
     strategy:
       # Если упал один язык, остальные доводим до конца
@@ -102,9 +102,9 @@ jobs:
     # Шаги
     steps:
       # Код
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Python для бэкенда
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         # Версия и кэш
         with: { python-version: "3.12", cache: pip }
       # Поднять бэкенд в фоне
@@ -114,7 +114,7 @@ jobs:
       # Java: установить JDK
       - if: matrix.lang == 'java'
         # Действие установки Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         # Temurin 21 с кэшем Maven
         with: { distribution: temurin, java-version: "21", cache: maven }
       # Java: запуск тестов TestNG через Maven
@@ -124,7 +124,7 @@ jobs:
       # Java: сохранить результаты Allure, даже если тесты упали
       - if: matrix.lang == 'java' && always()
         # Загрузка артефакта
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         # Имя и папка
         with: { name: allure-results, path: autotests/java/target/allure-results }
       # Java: если упало — вывести причины аннотациями, их видно прямо на странице проверки
@@ -138,7 +138,7 @@ jobs:
       # Go: установить Go
       - if: matrix.lang == 'go'
         # Действие установки Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         # Версия
         with: { go-version: "1.22" }
       # Go: тесты
@@ -158,7 +158,7 @@ jobs:
       # C#: установить .NET
       - if: matrix.lang == 'csharp'
         # Действие установки .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         # Версия
         with: { dotnet-version: "8.0.x" }
       # C#: тесты xUnit

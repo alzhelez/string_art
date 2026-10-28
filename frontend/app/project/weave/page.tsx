@@ -15,6 +15,10 @@ import { routes, useProjectId } from "@/lib/routes";
 import { api, ApiError, type Project } from "@/lib/api";
 // Расчёт лески (для стандартной катушки)
 import { threadStats } from "@/lib/thread";
+// Нити цветного портрета
+import { boardColor, drawLayers, isMultiLayer, layerTitle, projectLayers } from "@/lib/layers";
+// Числа по-русски
+import { num } from "@/lib/format";
 
 // Страница плетения (адрес /project/weave?id=…)
 export default function WeavePage() {
@@ -38,8 +42,10 @@ function WeavePageInner() {
   const [error, setError] = useState("");
   // Ошибка сохранения
   const [saveError, setSaveError] = useState("");
+  // Какую нить плетём (у цветного портрета)
+  const [layer, setLayer] = useState(0);
   // Сохранение через 300 мс после последнего изменения; ошибка — показать предупреждение
-  const { schedule } = useDebouncedPatch(id, 300, (e) =>
+  const { schedule, flush } = useDebouncedPatch(id, 300, (e) =>
     // Текст ошибки
     setSaveError(e instanceof ApiError ? e.message : "Шаг не сохранился — проверьте связь с сервером."),
   );
@@ -51,7 +57,12 @@ function WeavePageInner() {
       // По id
       .get(id)
       // Успех — в состояние
-      .then(setProject)
+      .then((p) => {
+        // Проект
+        setProject(p);
+        // Нить, на которой остановились
+        setLayer(Math.min(p.current_layer ?? 0, projectLayers(p).length - 1));
+      })
       // Ошибка: «не найден» или текст
       .catch((e) => setError(e instanceof ApiError && e.status === 404 ? "Проект не найден." : String(e.message)));
   // При смене id
@@ -79,6 +90,26 @@ function WeavePageInner() {
   // Ещё грузится
   if (!project) return <p className="muted">Загружаем инструкцию…</p>;
 
+  // Нити портрета
+  const layers = projectLayers(project);
+  // Несколько нитей
+  const multi = isMultiLayer(project);
+  // Текущая нить
+  const active = layers[layer];
+  // Перейти к другой нити: сохранить прежнюю, запомнить выбор на сервере
+  const switchLayer = async (i: number) => {
+    // Отправить отложенное сохранение шага
+    await flush();
+    // Новая нить
+    setLayer(i);
+    // Запомнить на сервере
+    schedule({ current_layer: i });
+  };
+  // Запомнить шаг нити в проекте (чтобы при возврате к нити продолжить с него)
+  const rememberStep = (s: number) =>
+    // Новый проект с изменённым шагом нужной нити
+    setProject((p) => (p && p.layers ? { ...p, layers: p.layers.map((l, i) => (i === layer ? { ...l, current_step: s } : l)) } : p));
+
   // Разметка
   return (
     // Страница
@@ -91,16 +122,34 @@ function WeavePageInner() {
           {saveError}
         </p>
       )}
-      {/* Экран плетения */}
+      {/* У цветного портрета — выбор нити */}
+      {multi && (
+        // Ряд нитей
+        <div className="segmented-wide layer-tabs weave-layers" role="radiogroup" aria-label="Нить">
+          {/* Кнопка на каждую нить */}
+          {layers.map((l, i) => (
+            // Кнопка
+            <button key={l.index} type="button" role="radio" aria-checked={layer === i} onClick={() => void switchLayer(i)}>
+              {/* Кружок цвета */}
+              <span className="swatch-dot small" style={{ background: l.hex }} aria-hidden="true" />
+              {/* Номер, цвет и прогресс */}
+              {i + 1}. {l.name} · {num(l.current_step)}/{num(l.line_count)}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Экран плетения; key — новая нить начинается со своего шага */}
       <WeavePlayer
-        // Последовательность
-        sequence={project.sequence}
+        // Ключ: смена нити пересоздаёт экран
+        key={layer}
+        // Последовательность нити
+        sequence={active.sequence}
         // Шагов
-        totalSteps={project.line_count}
+        totalSteps={active.line_count}
         // Диаметр
         diameterCm={project.diameter_cm}
         // С какого шага
-        initialStep={project.current_step}
+        initialStep={active.current_step}
         // Скорость
         initialSpeedSec={project.speed_sec}
         // Название
@@ -112,13 +161,25 @@ function WeavePageInner() {
         // Журнал времени
         activity={project.activity}
         // Катушка: своя или стандартная из расчёта
-        spoolM={project.own_spool_m ?? threadStats(project.sequence, project.line_count, project.diameter_cm).spool_m}
+        spoolM={project.own_spool_m ?? threadStats(active.sequence, active.line_count, project.diameter_cm).spool_m}
+        // Все нити — для схемы
+        layers={multi ? drawLayers(project) : undefined}
+        // Текущая нить
+        activeLayer={multi ? layer : undefined}
+        // Цвет доски
+        boardColor={multi ? boardColor(project) : undefined}
+        // Подпись нити
+        layerLabel={multi ? layerTitle(project, layer) : undefined}
+        // Следующая нить
+        nextLayer={multi && layer + 1 < layers.length ? { label: layerTitle(project, layer + 1), go: () => void switchLayer(layer + 1) } : undefined}
         // Сменился шаг
         onStepChange={(s) => {
           // Скрыть прошлую ошибку
           setSaveError("");
-          // Сохранить шаг
-          schedule({ current_step: s });
+          // Запомнить локально
+          rememberStep(s);
+          // Сохранить шаг (у цветного портрета — с номером нити)
+          schedule(multi ? { layer, current_step: s } : { current_step: s });
         }}
         // Сменилась скорость — сохранить
         onSpeedChange={(sec) => schedule({ speed_sec: sec })}

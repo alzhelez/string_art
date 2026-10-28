@@ -10,7 +10,7 @@ import { useAutoPrep, usePhotoEditor } from "@/hooks/usePhotoEditor";
 // Адреса страниц
 import { routes } from "@/lib/routes";
 // API, тип ошибки, типы данных
-import { api, ApiError, type Features, type ImageInfo } from "@/lib/api";
+import { api, ApiError, MONO_CHOICE, type Features, type ImageInfo, type Palette, type ThreadChoice } from "@/lib/api";
 // Диаметр по умолчанию
 import { DEFAULT_DIAMETER_CM } from "@/lib/constants";
 // Уменьшение фото перед загрузкой
@@ -23,6 +23,8 @@ import { DiameterPicker } from "./DiameterPicker";
 import { NailRing } from "./NailRing";
 // Окно кадра и панель настроек фото
 import { PhotoControls, PhotoViewport } from "./PhotoEditor";
+// Выбор нитей: одна чёрная, чёрная + белая, цветные
+import { previewBoard, threadChoiceValid, ThreadPicker } from "./ThreadPicker";
 // Иконки
 import { Icon } from "./ui/Icon";
 
@@ -39,6 +41,10 @@ export function NewProject() {
   const [info, setInfo] = useState<ImageInfo | null>(null);
   // Возможности сервера
   const [features, setFeatures] = useState<Features | null>(null);
+  // Каталог нитей и досок (null — сервер старый или ещё не ответил)
+  const [palette, setPalette] = useState<Palette | null>(null);
+  // Выбор нитей
+  const [threads, setThreads] = useState<ThreadChoice>(MONO_CHOICE);
   // Имя файла без расширения (название по умолчанию)
   const [fileName, setFileName] = useState("");
   // Введённое название
@@ -60,6 +66,8 @@ export function NewProject() {
   useEffect(() => {
     // Узнаём, что умеет сервер
     api.features().then(setFeatures).catch(() => setFeatures(null));
+    // Каталог нитей (без него — только одна чёрная нить)
+    api.palette().then(setPalette).catch(() => setPalette(null));
   // Один раз
   }, []);
 
@@ -123,6 +131,8 @@ export function NewProject() {
         diameter_cm: diameter,
         // Настройки кадра
         prep: editor.prep,
+        // Выбранные нити
+        threads,
       });
       // Переходим в студию
       router.push(routes.project(project.id));
@@ -172,6 +182,8 @@ export function NewProject() {
           prep={editor.prep}
           // Изменение настроек
           onChange={editor.setPrep}
+          // Цветной портрет — превью в цвете на доске
+          board={previewBoard(threads, palette)}
         />
       // Иначе
       ) : (
@@ -268,6 +280,8 @@ export function NewProject() {
 
         {/* Выбор диаметра */}
         <DiameterPicker value={diameter} onChange={setDiameter} id="new-diameter" />
+        {/* Какими нитями плести */}
+        <ThreadPicker palette={palette} value={threads} onChange={setThreads} />
 
         {/* Настройки фото (после загрузки) */}
         {info && (
@@ -331,7 +345,7 @@ export function NewProject() {
             // Нажатие
             onClick={submit}
             // Неактивна без фото, во время работы, пока грузится маска или идёт автонастройка
-            disabled={!info || busy || editor.maskStatus === "loading" || auto.busy}
+            disabled={!info || busy || editor.maskStatus === "loading" || auto.busy || !threadChoiceValid(threads, palette)}
           >
             {/* Значок */}
             <Icon name="sparkle" size={18} />
@@ -348,7 +362,10 @@ export function NewProject() {
           )}
         </div>
         {/* Пояснение во время расчёта */}
-        {stage === "creating" && <p className="muted">Обычно это занимает пару секунд.</p>}
+        {stage === "creating" && (
+          // Подсказка о времени расчёта
+          <p className="muted">{threads.mode === "mono" ? "Обычно это занимает пару секунд." : "Считаем каждую нить отдельно — 10–20 секунд."}</p>
+        )}
       </div>
     </section>
   );

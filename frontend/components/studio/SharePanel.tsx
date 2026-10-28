@@ -11,6 +11,8 @@ import { num } from "@/lib/format";
 import { recordTimelapse, renderCard, saveBlob, videoFormat } from "@/lib/share";
 // Иконки
 import { Icon } from "../ui/Icon";
+// Нить для рисования
+import type { DrawLayer } from "@/lib/layers";
 
 // Имя файла без запрещённых в Windows символов (\ / : * ? " < > |)
 const fileSafe = (s: string) => s.replace(/[\\/:*?"<>|]+/g, " ").trim() || "портрет";
@@ -32,6 +34,10 @@ export function SharePanel({
   threadM,
   // Сохранить несохранённые изменения перед скачиванием
   beforeDownload,
+  // Нити цветного портрета
+  threads,
+  // Цвет доски
+  boardColor,
 // Типы свойств
 }: {
   // id
@@ -48,6 +54,10 @@ export function SharePanel({
   threadM: number;
   // Функция сохранения
   beforeDownload: () => Promise<void>;
+  // Нити цветного портрета (для открытки и видео)
+  threads?: readonly DrawLayer[];
+  // Цвет доски
+  boardColor?: string;
 // Тело компонента
 }) {
   // Формат бумаги шаблона
@@ -105,7 +115,7 @@ export function SharePanel({
     // Ошибки ловим
     try {
       // Рисуем PNG
-      const blob = await renderCard({ sequence, lines, diameterCm, caption, title: name, threadM });
+      const blob = await renderCard({ sequence, lines, diameterCm, caption, title: name, threadM, threads, boardColor });
       // Показываем
       setCard({ blob, url: URL.createObjectURL(blob) });
     // Ошибка
@@ -153,6 +163,10 @@ export function SharePanel({
         lines,
         // Диаметр
         diameterCm,
+        // Нити цветного портрета
+        threads,
+        // Цвет доски
+        boardColor,
         // Подпись или название в конце ролика
         title: caption.trim() || name,
         // Длина

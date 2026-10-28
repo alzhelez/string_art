@@ -97,7 +97,79 @@ export interface ProjectSummary {
   activity: Activity;
   // Сводка по леске
   stats: ThreadStats;
+  // Режим: одна чёрная нить, чёрная + белая, цветные (у старых серверов поля может не быть)
+  mode?: ThreadMode;
+  // Цвет доски
+  board?: Swatch;
+  // Какую нить сейчас плетут
+  current_layer?: number;
+  // Нити по порядку плетения (у портрета из одной нити — одна чёрная)
+  layers?: LayerSummary[];
 }
+
+// Режим нитей портрета
+export type ThreadMode = "mono" | "bw" | "color";
+
+// Цвет из каталога: нить или доска
+export interface Swatch {
+  // Ключ латиницей
+  key: string;
+  // Название по-русски
+  name: string;
+  // Цвет #rrggbb
+  hex: string;
+}
+
+// Одна нить (слой) портрета
+export interface LayerSummary extends Swatch {
+  // Номер слоя по порядку плетения, с 0
+  index: number;
+  // Ключ цвета нити (то же, что key у Swatch)
+  color: string;
+  // Число линий слоя
+  line_count: number;
+  // Текущий шаг слоя
+  current_step: number;
+  // Леска этого цвета
+  stats: ThreadStats;
+}
+
+// Слой с последовательностью гвоздей
+export interface Layer extends LayerSummary {
+  // Гвозди по порядку, первый — A1
+  sequence: number[];
+}
+
+// Каталог нитей и досок для цветных портретов
+export interface Palette {
+  // Режимы
+  modes: ThreadMode[];
+  // Нити
+  threads: Swatch[];
+  // Цвета доски
+  boards: Swatch[];
+  // Доска по умолчанию для каждого режима
+  default_board: Record<ThreadMode, string>;
+  // Сколько цветов можно выбрать
+  colors: { min: number; max: number; default: number };
+  // Наименьшее число линий слоя
+  layer_min_lines: number;
+}
+
+// Выбор нитей при создании портрета или правке фото
+export interface ThreadChoice {
+  // Режим
+  mode: ThreadMode;
+  // Цвета вручную (null — подобрать под фото)
+  colors: string[] | null;
+  // Сколько цветов подобрать
+  color_count: number;
+  // Цвет доски (null — по умолчанию для режима)
+  board: string | null;
+}
+
+// Одна чёрная нить — выбор по умолчанию
+export const MONO_CHOICE: ThreadChoice = { mode: "mono", colors: null, color_count: 3, board: null };
 
 // Время за день
 export interface ActivityDay {
@@ -131,13 +203,32 @@ export interface AppInfo {
 export interface Project extends ProjectSummary {
   /** Гвозди по порядку; длина 5001, первый — A1. */
   sequence: number[];
+  // Слои с последовательностями
+  layers?: Layer[];
 }
 
 // Что можно менять запросом PATCH — часть полей проекта, каждое необязательно
 export type ProjectPatch = Partial<
   // Выбранные поля
-  Pick<Project, "name" | "diameter_cm" | "line_count" | "current_step" | "speed_sec" | "own_spool_m">
->;
+  Pick<Project, "name" | "diameter_cm" | "line_count" | "current_step" | "speed_sec" | "own_spool_m" | "current_layer">
+// Номер слоя, к которому относятся line_count и current_step
+> & { layer?: number };
+
+// Поля нитей для тела запроса (без выбора — ничего)
+function threadFields(t?: ThreadChoice): Partial<ThreadChoice> {
+  // Нет выбора — пусто
+  if (!t) return {};
+  // Режим, цвета (null — подобрать), число цветов, доска
+  return { mode: t.mode, colors: t.mode === "color" ? t.colors : null, color_count: t.color_count, board: t.board };
+}
+
+// Тело без поля threads (оно разворачивается в отдельные поля)
+function withoutThreads<T extends { threads?: ThreadChoice }>(body: T): Omit<T, "threads"> {
+  // Копия без threads
+  const { threads: _unused, ...rest } = body;
+  // Отдаём
+  return rest;
+}
 
 // Ошибка API с HTTP-кодом и понятным текстом
 export class ApiError extends Error {
@@ -261,34 +352,42 @@ export const api = {
   // Информация о фото
   image: (id: string) => request<ImageInfo>(`/api/images/${id}`),
   // Создать проект из фото редактора
-  createFromImage: (body: { image_id: string; name: string; diameter_cm: number; prep: Prep }) =>
+  createFromImage: (body: { image_id: string; name: string; diameter_cm: number; prep: Prep; threads?: ThreadChoice }) =>
     // POST-запрос
     request<Project>("/api/projects/from-image", {
       // Метод
       method: "POST",
       // JSON
       headers: { "Content-Type": "application/json" },
-      // Пустое название → null (сервер подставит «Портрет от …»)
-      body: JSON.stringify({ ...body, name: body.name.trim() || null }),
+      // Пустое название → null (сервер подставит «Портрет от …»); нити — отдельными полями
+      body: JSON.stringify({ ...threadFields(body.threads), ...withoutThreads(body), name: body.name.trim() || null }),
     }),
   // Новые настройки фото проекта (пересчёт схемы)
-  updatePhoto: (id: string, prep: Prep) =>
+  updatePhoto: (id: string, prep: Prep, threads?: ThreadChoice) =>
     // PUT-запрос
     request<Project>(`/api/projects/${id}/photo`, {
       // Метод
       method: "PUT",
       // JSON
       headers: { "Content-Type": "application/json" },
-      // Настройки кадра
-      body: JSON.stringify(prep),
+      // Настройки кадра и, если переданы, нити
+      body: JSON.stringify({ ...prep, ...threadFields(threads) }),
     }),
   // Кривая сходства (необязательно — для другого диаметра)
-  similarity: (id: string, diameterCm?: number) =>
+  similarity: (id: string, diameterCm?: number, layer = 0) => {
+    // Параметры запроса
+    const q = new URLSearchParams();
+    // Диаметр — только если передан
+    if (diameterCm !== undefined) q.set("diameter_cm", String(diameterCm));
+    // Слой — только для второй нити и дальше
+    if (layer > 0) q.set("layer", String(layer));
+    // Строка параметров
+    const query = q.toString();
     // GET-запрос
-    request<Similarity>(
-      // Параметр diameter_cm добавляется, только если передан
-      `/api/projects/${id}/similarity${diameterCm !== undefined ? `?diameter_cm=${diameterCm}` : ""}`,
-    ),
+    return request<Similarity>(`/api/projects/${id}/similarity${query ? `?${query}` : ""}`);
+  },
+  // Каталог нитей и досок
+  palette: async (): Promise<Palette | null> => (await request<{ palette?: Palette }>("/api/config")).palette ?? null,
   // Автонастройка яркости и контраста
   autoTone: (imageId: string, prep: Prep, diameterCm: number) =>
     // POST-запрос

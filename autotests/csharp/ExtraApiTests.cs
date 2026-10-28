@@ -232,4 +232,53 @@ public class ExtraApiTests : IClassFixture<ApiFixture>
         // Чужой id → 404
         Assert.Equal(HttpStatusCode.NotFound, (await _api.Http.PutAsync("/api/images/000000000000/mask.png", Png(new byte[] { 1 }))).StatusCode);
     }
+
+    // Тест
+    [Fact(DisplayName = "TC-API-32 «чёрная + белая»: две нити, PATCH нити, шаги и сходство нити")]
+    // Цветной портрет
+    public async Task ColorLayers()
+    {
+        // Загружаем фото
+        var img = await UploadImage("face.jpg", "image/jpeg");
+        // Создаём портрет из двух нитей
+        var res = await _api.Http.PostAsync("/api/projects/from-image", JsonBody(new { image_id = img["id"]!.GetValue<string>(), mode = "bw" }));
+        // → 201
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+        // Проект
+        var p = await ApiFixture.Json(res);
+        // id
+        var id = p["id"]!.GetValue<string>();
+        // Блок с уборкой
+        try
+        {
+            // Режим bw
+            Assert.Equal("bw", p["mode"]!.GetValue<string>());
+            // Серая доска
+            Assert.Equal("gray", p["board"]!["key"]!.GetValue<string>());
+            // Цвета нитей по алфавиту
+            var colors = p["layers"]!.AsArray().Select(l => l!["color"]!.GetValue<string>()).OrderBy(c => c).ToArray();
+            // Белая и чёрная
+            Assert.Equal(new[] { "black", "white" }, colors);
+            // Вторая нить: 300 линий
+            var upd = await ApiFixture.Json(await _api.Patch(id, new { layer = 1, line_count = 300 }));
+            // Сохранилось
+            Assert.Equal(300, upd["layers"]![1]!["line_count"]!.GetValue<int>());
+            // Шаги второй нити
+            var steps = await ApiFixture.Json(await _api.Http.GetAsync($"/api/projects/{id}/steps?layer=1&limit=1"));
+            // Всего 300
+            Assert.Equal(300, steps["total"]!.GetValue<int>());
+            // Сходство второй нити — 25 точек
+            var sim = await ApiFixture.Json(await _api.Http.GetAsync($"/api/projects/{id}/similarity?layer=1"));
+            // Проверка
+            Assert.Equal(25, sim["curve"]!.AsArray().Count);
+            // Третьей нити нет → 422
+            Assert.Equal((HttpStatusCode)422, (await _api.Patch(id, new { layer = 2, line_count = 300 })).StatusCode);
+        }
+        // В любом случае —
+        finally
+        {
+            // — удаляем проект
+            await _api.Http.DeleteAsync($"/api/projects/{id}");
+        }
+    }
 }

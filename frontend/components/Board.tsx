@@ -46,7 +46,7 @@ export function Board({ label, maxPixels = 1600, ...draw }: Props) {
   }, [maxPixels]);
 
   // Параметры рисования по отдельности (для списка зависимостей эффекта)
-  const { sequence, lines, diameterCm, activeStep, doneOpacity } = draw;
+  const { sequence, lines, diameterCm, activeStep, doneOpacity, layers, activeLayer, boardColor } = draw;
   // Перерисовать при смене темы (подписи гвоздей берут цвет из темы)
   // Счётчик смен темы
   const [themeTick, setThemeTick] = useState(0);
@@ -79,12 +79,12 @@ export function Board({ label, maxPixels = 1600, ...draw }: Props) {
       // Цвета подписей, осей и акцента из темы
       const colors = { graphite: v("--text"), steel: v("--text-2"), chalk: v("--accent") };
       // Рисуем
-      drawBoard(ctx, { sequence, lines, diameterCm, activeStep, doneOpacity, size, colors: colors as never });
+      drawBoard(ctx, { sequence, lines, diameterCm, activeStep, doneOpacity, layers, activeLayer, boardColor, size, colors: colors as never });
     });
     // Отменить, если до кадра пришло новое изменение
     return () => cancelAnimationFrame(raf);
   // Зависимости
-  }, [sequence, lines, diameterCm, activeStep, doneOpacity, size, themeTick]);
+  }, [sequence, lines, diameterCm, activeStep, doneOpacity, layers, activeLayer, boardColor, size, themeTick]);
 
   // Разметка
   return (

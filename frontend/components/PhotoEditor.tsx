@@ -51,6 +51,8 @@ interface ViewportProps {
   onChange: (p: Prep) => void;
   // Кисть (если редактор её поддерживает)
   brush?: BrushApi;
+  /** Цветной портрет: показывать кадр в цвете, фон — цветом доски (#rrggbb). */
+  board?: string | null;
 }
 
 /**
@@ -59,7 +61,7 @@ interface ViewportProps {
  * Показывает ровно то, что получит алгоритм (кадр в оттенках серого).
  */
 // Окно кадра
-export function PhotoViewport({ info, image, imageError = false, mask, maskVersion = 0, prep, onChange, brush }: ViewportProps) {
+export function PhotoViewport({ info, image, imageError = false, mask, maskVersion = 0, prep, onChange, brush, board = null }: ViewportProps) {
   // Холст
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Кружок-курсор кисти
@@ -84,11 +86,11 @@ export function PhotoViewport({ info, image, imageError = false, mask, maskVersi
     // Нет холста или фото ещё не загрузилось
     if (!canvas || !image) return;
     // Рисуем в ближайшем кадре экрана
-    const raf = requestAnimationFrame(() => drawPrepared(canvas, image, mask, prep, undefined, { showRemoved: painting }));
+    const raf = requestAnimationFrame(() => drawPrepared(canvas, image, mask, prep, undefined, { showRemoved: painting, board }));
     // Отменить, если пришло новое изменение
     return () => cancelAnimationFrame(raf);
   // Зависимости
-  }, [image, mask, maskVersion, prep, painting]);
+  }, [image, mask, maskVersion, prep, painting, board]);
 
   // Колесо мыши: preventDefault работает только у не-passive обработчика
   // Масштаб колесом мыши

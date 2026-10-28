@@ -59,6 +59,14 @@ _MIGRATIONS = {
         "own_spool_m": "REAL",  # длина катушки, которая есть у человека (для плана смены катушек)
         # Журнал времени плетения
         "activity": "TEXT NOT NULL DEFAULT '{}'",  # время плетения по дням: {"2026-10-27": [сек, шагов]}
+        # Режим портрета: mono — одна чёрная нить, bw — чёрная и белая, color — цветные
+        "mode": "TEXT NOT NULL DEFAULT 'mono'",
+        # Цвет доски (ключ из palette.BOARDS)
+        "board": "TEXT NOT NULL DEFAULT 'white'",
+        # Слои для портретов из нескольких нитей, JSON: [{"color", "sequence", "line_count", "current_step"}]
+        "layers": "TEXT NOT NULL DEFAULT '[]'",
+        # Какую нить сейчас плетут (номер слоя)
+        "current_layer": "INTEGER NOT NULL DEFAULT 0",
     },
     # mask_source: 'auto' — маска нейросети после чистки, 'edited' — поправлена кистью.
     # NULL у старых масок (до чистки) — такие считаются заново при первом запросе.
@@ -67,13 +75,15 @@ _MIGRATIONS = {
 }
 
 # Какие поля проекта можно менять через PATCH (защита от подмены id, sequence и т. п.)
-EDITABLE_FIELDS = ("name", "diameter_cm", "line_count", "current_step", "speed_sec", "own_spool_m")
+EDITABLE_FIELDS = ("name", "diameter_cm", "line_count", "current_step", "speed_sec", "own_spool_m", "current_layer")
+# Поля одного слоя, которые можно менять
+LAYER_FIELDS = ("line_count", "current_step")
 # Колонки для списка проектов (без тяжёлого PNG)
 _SUMMARY_COLUMNS = (
     # Основные поля проекта
     "id, name, created_at, updated_at, diameter_cm, line_count, current_step, speed_sec, image_id, prep,"
     # Поля, добавленные позже
-    " own_spool_m, activity"
+    " own_spool_m, activity, mode, board, layers, current_layer"
 )
 
 
@@ -141,8 +151,46 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     if "activity" in data:
         # Текст → словарь
         data["activity"] = json.loads(data["activity"] or "{}")
+    # Слои — JSON-список (у портретов из одной нити пустой)
+    if "layers" in data:
+        # Текст → список
+        data["layers"] = json.loads(data["layers"] or "[]")
     # Готовый словарь
     return data
+
+
+# Проверка номеров гвоздей: хранятся по байту, поэтому каждый должен быть 0..255
+def _check_nails(sequence: list[int]) -> None:
+    # Есть номер вне байта —
+    if any(not 0 <= n <= 255 for n in sequence):
+        # — bytes() упадёт, поэтому сообщаем понятнее
+        raise ValueError("Номер гвоздя не помещается в байт")
+
+
+# Слои для записи в базу: только нужные поля, прогресс по умолчанию — шаг 1
+def _layers_json(layers: list[dict] | None) -> str:
+    # Пустой список — портрет из одной нити
+    out = []
+    # Каждый слой —
+    for layer in layers or []:
+        # — проверяем номера гвоздей
+        _check_nails(layer["sequence"])
+        # — сохраняем цвет, последовательность, число линий и прогресс
+        out.append(
+            # Поля слоя
+            {
+                # Ключ цвета нити
+                "color": layer["color"],
+                # Гвозди по порядку
+                "sequence": list(layer["sequence"]),
+                # Выбранное число линий
+                "line_count": int(layer["line_count"]),
+                # Текущий шаг (по умолчанию первый)
+                "current_step": int(layer.get("current_step", 1)),
+            }
+        )
+    # JSON-текст
+    return json.dumps(out)
 
 
 # --- проекты ----------------------------------------------------------------
@@ -166,12 +214,24 @@ def create_project(
     image_id: str | None = None,
     # Настройки кадра
     prep: dict | None = None,
+    # Режим портрета (mono, bw, color)
+    mode: str = "mono",
+    # Цвет доски
+    board: str = "white",
+    # Слои для портретов из нескольких нитей (первый слой повторяет sequence/line_count)
+    layers: list[dict] | None = None,
+    # Прогресс плетения (при переносе проекта из файла — не с начала)
+    current_step: int = 1,
+    # Какой слой плетут
+    current_layer: int = 0,
+    # Своя катушка
+    own_spool_m: float | None = None,
+    # Журнал времени плетения
+    activity: dict | None = None,
 # Возвращает созданный проект как словарь
 ) -> dict[str, Any]:
-    # Номера гвоздей хранятся по байту — каждый должен быть 0..255
-    if any(not 0 <= n <= 255 for n in sequence):
-        # Иначе bytes() упадёт — сообщаем понятнее
-        raise ValueError("Номер гвоздя не помещается в байт")
+    # Номера гвоздей должны помещаться в байт
+    _check_nails(sequence)
     # Новый id
     project_id = _new_id()
     # Время создания (оно же время изменения)
@@ -180,16 +240,22 @@ def create_project(
     with _connect() as conn:
         # Вставляем строку; знаки ? — параметры (защита от SQL-инъекций)
         conn.execute(
-            # Список колонок; current_step сразу 1 — плетение начинается с первого шага
+            # Список колонок
             "INSERT INTO projects (id, name, created_at, updated_at, diameter_cm, line_count, current_step,"
-            # Продолжение списка колонок и значения
-            " speed_sec, sequence, source_png, image_id, prep) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)",
+            # Продолжение списка колонок
+            " speed_sec, sequence, source_png, image_id, prep, mode, board, layers, current_layer, own_spool_m,"
+            # Последние колонки и места для значений
+            " activity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             # Значения параметров по порядку
             (
-                # id, имя, даты, диаметр, линии, скорость
-                project_id, name, now, now, diameter_cm, line_count, speed_sec,
+                # id, имя, даты, диаметр, линии, шаг, скорость
+                project_id, name, now, now, diameter_cm, line_count, current_step, speed_sec,
                 # последовательность байтами, PNG, ссылка на фото, настройки кадра JSON-текстом
                 bytes(sequence), source_png, image_id, json.dumps(prep or {}),
+                # режим, доска, слои, текущий слой, своя катушка
+                mode, board, _layers_json(layers), current_layer, own_spool_m,
+                # журнал времени
+                json.dumps(activity or {}, sort_keys=True),
             ),
         )
     # Читаем только что созданный проект обратно (с вычисленными полями)
@@ -295,25 +361,70 @@ def add_activity(project_id: str, day: str, seconds: float, steps: int) -> dict[
 # Новый расчёт после правки фото
 def replace_photo(
     # id проекта, затем только именованные: новая последовательность, PNG, настройки кадра, число линий
-    project_id: str, *, sequence: list[int], source_png: bytes, prep: dict, line_count: int
+    project_id: str, *, sequence: list[int], source_png: bytes, prep: dict, line_count: int,
+    # Режим, доска и слои (для одной нити слоёв нет)
+    mode: str = "mono", board: str = "white", layers: list[dict] | None = None,
 # Возвращает проект или None
 ) -> dict[str, Any] | None:
     """Новый расчёт после правки фото: схема другая, поэтому прогресс начинается заново."""
+    # Номера гвоздей должны помещаться в байт
+    _check_nails(sequence)
     # Открываем базу
     with _connect() as conn:
         # Обновляем всё, что зависит от фото
         cur = conn.execute(
             # Прогресс сбрасываем на шаг 1 — старая последовательность больше не действует
             "UPDATE projects SET sequence = ?, source_png = ?, prep = ?, line_count = ?, current_step = 1,"
+            # Режим, доска, слои; плетение снова с первого слоя
+            " mode = ?, board = ?, layers = ?, current_layer = 0,"
             # Время изменения и условие по id
             " updated_at = ? WHERE id = ?",
             # Значения параметров
-            (bytes(sequence), source_png, json.dumps(prep), line_count, _now(), project_id),
+            (bytes(sequence), source_png, json.dumps(prep), line_count, mode, board, _layers_json(layers), _now(), project_id),
         )
         # Проекта нет
         if cur.rowcount == 0:
             # «не найдено»
             return None
+    # Обновлённый проект
+    return get_project(project_id)
+
+
+# Изменить число линий или шаг одного слоя (портреты из нескольких нитей)
+def update_layer(project_id: str, index: int, fields: dict[str, Any]) -> dict[str, Any] | None:
+    """Первый слой повторяется в колонках line_count/current_step — их тоже обновляем."""
+    # Лишние поля — ошибка программиста
+    unknown = set(fields) - set(LAYER_FIELDS)
+    # Если такие есть —
+    if unknown:
+        # — сообщаем
+        raise ValueError(f"Нельзя менять поля слоя: {sorted(unknown)}")
+    # Открываем базу
+    with _connect() as conn:
+        # Блокировка записи: два окна не затрут правки друг друга
+        conn.execute("BEGIN IMMEDIATE")
+        # Текущие слои
+        row = conn.execute("SELECT layers FROM projects WHERE id = ?", (project_id,)).fetchone()
+        # Проекта нет —
+        if row is None:
+            # — «не найдено»
+            return None
+        # Слои списком
+        layers = json.loads(row["layers"] or "[]")
+        # Номер слоя вне списка —
+        if not 0 <= index < len(layers):
+            # — ошибка
+            raise ValueError("Нет такого слоя")
+        # Применяем изменения
+        layers[index].update(fields)
+        # Записываем слои и время изменения
+        conn.execute("UPDATE projects SET layers = ?, updated_at = ? WHERE id = ?", (json.dumps(layers), _now(), project_id))
+        # Первый слой —
+        if index == 0 and fields:
+            # — повторяем в основных колонках
+            assignments = ", ".join(f"{k} = ?" for k in fields)
+            # Обновляем
+            conn.execute(f"UPDATE projects SET {assignments} WHERE id = ?", (*fields.values(), project_id))
     # Обновлённый проект
     return get_project(project_id)
 

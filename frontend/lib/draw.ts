@@ -6,6 +6,8 @@ import { SECTORS, THREAD_DIAMETER_MM, TOTAL_NAILS } from "./constants";
 import { nailLabel, nailXY, sectorCenterAngle } from "./nails";
 // Цвета по умолчанию
 import { PALETTE } from "./palette";
+// Тип нити для рисования
+import type { DrawLayer } from "./layers";
 
 // Непрозрачность одной нити при данном размере картинки (как на бэкенде)
 export function lineAlpha(pixelSize: number, diameterCm: number): number {
@@ -35,6 +37,12 @@ export interface DrawOptions {
   activeStep?: number;
   /** Насколько бледно рисовать уже натянутые линии в режиме плетения (0..1). */
   doneOpacity?: number;
+  /** Цветной портрет: все нити по порядку плетения (тогда sequence/lines — текущая нить в плетении). */
+  layers?: readonly DrawLayer[];
+  /** Какая нить сейчас плетётся: прежние рисуются целиком, следующие — не рисуются. */
+  activeLayer?: number;
+  /** Цвет доски (по умолчанию белый). */
+  boardColor?: string;
 }
 
 // Центр и радиус круга на холсте (с подписями нужен отступ побольше)
@@ -60,8 +68,8 @@ export function drawBoard(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   // Очищаем холст
   ctx.clearRect(0, 0, size, size);
 
-  // Белая доска
-  ctx.fillStyle = P.board;
+  // Доска: белая или своего цвета
+  ctx.fillStyle = o.boardColor ?? P.board;
   // Начинаем фигуру
   ctx.beginPath();
   // Круг
@@ -69,32 +77,35 @@ export function drawBoard(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   // Заливаем
   ctx.fill();
 
-  // Сколько линий рисовать: в плетении — все до текущего шага, иначе — заданное число
+  // Сколько линий текущей нити рисовать: в плетении — все до текущего шага, иначе — заданное число
   const lines = weave ? Math.max(0, (o.activeStep ?? 1) - 1) : o.lines;
   // Прозрачность нити; в плетении натянутые нити бледнее, чтобы выделялась текущая
   const alpha = lineAlpha(2 * r, o.diameterCm) * (weave ? (o.doneOpacity ?? 0.45) : 1);
-  // Цвет нитей
-  ctx.strokeStyle = P.line;
   // Прозрачность
   ctx.globalAlpha = alpha;
   // Толщина линии — не меньше 1 px
   ctx.lineWidth = Math.max(1, size / 1400);
   // Координаты всех гвоздей заранее
   const pts = Array.from({ length: TOTAL_NAILS }, (_, i) => nailXY(i, r, cx, cy));
-  // Каждая линия
-  for (let i = 0; i < lines && i + 1 < o.sequence.length; i++) {
-    // Откуда
-    const [x0, y0] = pts[o.sequence[i]];
-    // Куда
-    const [x1, y1] = pts[o.sequence[i + 1]];
-    // Новая фигура для каждой линии
-    ctx.beginPath(); // отдельный stroke на линию — иначе пересечения не темнеют
-    // Начало
-    ctx.moveTo(x0, y0);
-    // Конец
-    ctx.lineTo(x1, y1);
-    // Провести
-    ctx.stroke();
+  // Каждая нить по очереди
+  for (const pass of passes(o, lines, weave)) {
+    // Цвет нити
+    ctx.strokeStyle = pass.color;
+    // Каждая линия
+    for (let i = 0; i < pass.lines && i + 1 < pass.sequence.length; i++) {
+      // Откуда
+      const [x0, y0] = pts[pass.sequence[i]];
+      // Куда
+      const [x1, y1] = pts[pass.sequence[i + 1]];
+      // Новая фигура для каждой линии
+      ctx.beginPath(); // отдельный stroke на линию — иначе пересечения не темнеют
+      // Начало
+      ctx.moveTo(x0, y0);
+      // Конец
+      ctx.lineTo(x1, y1);
+      // Провести
+      ctx.stroke();
+    }
   }
   // Прозрачность обратно
   ctx.globalAlpha = 1;
@@ -149,6 +160,18 @@ export function drawBoard(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     // Метка «куда» — залитый кружок, крупнее
     marker(ctx, x1, y1, nailLabel(to), cx, cy, size, true);
   }
+}
+
+// Какие нити и сколько линий рисовать
+function passes(o: DrawOptions, lines: number, weave: boolean): DrawLayer[] {
+  // Одна нить — чёрная леска
+  if (!o.layers?.length) return [{ sequence: o.sequence, lines, color: P.line }];
+  // Не плетение (студия, открытка) — все нити целиком
+  if (!weave) return [...o.layers];
+  // Номер текущей нити
+  const active = o.activeLayer ?? 0;
+  // Прежние нити целиком, текущая — до шага, следующие — нет
+  return [...o.layers.slice(0, active), { sequence: o.sequence, lines, color: o.layers[active]?.color ?? P.line }];
 }
 
 // Оси и буквы секторов
