@@ -157,6 +157,65 @@ jobs:
           # Ошибка компиляции — падаем
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup: ошибка $LASTEXITCODE" }
 
+      # Контрольная сумма установщика — программа сверяет её перед обновлением в одну кнопку
+      - name: Контрольная сумма установщика
+        # PowerShell
+        shell: pwsh
+        # Сценарий
+        run: |
+          # SHA-256 строчными буквами
+          $h = (Get-FileHash dist\Nitegraf-Setup.exe -Algorithm SHA256).Hash.ToLower()
+          # Формат sha256sum: «сумма, два пробела, имя файла»
+          Set-Content -Path dist\Nitegraf-Setup.exe.sha256 -Value "$h  Nitegraf-Setup.exe" -NoNewline -Encoding ascii
+
+      # Тихая установка — так ставит обновление сама программа
+      - name: Проверка тихой установки, обновления поверх и удаления
+        # PowerShell
+        shell: pwsh
+        # Сценарий
+        run: |
+          # Папка установки во временной папке сборки
+          $dir = "$env:RUNNER_TEMP\nitegraf-install"
+          # Параметры тихой установки (как у обновления, но без /RELAUNCH=1 — программу не запускаем)
+          $quiet = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$dir")
+          # Ставим и ждём конца
+          $p = Start-Process dist\Nitegraf-Setup.exe -ArgumentList $quiet -Wait -PassThru
+          # Установщик должен завершиться без ошибки
+          if ($p.ExitCode -ne 0) { throw "установка: код $($p.ExitCode)" }
+          # Программа на месте
+          if (-not (Test-Path "$dir\Nitegraf.exe")) { throw "Nitegraf.exe не установлен" }
+          # Запускаем установленную программу в режиме «только сервер»
+          $app = Start-Process "$dir\Nitegraf.exe" -ArgumentList '--server-only', '--port', '8766' -PassThru
+          # Флаг «сервер ответил»
+          $ok = $false
+          # До 90 попыток раз в секунду
+          for ($i = 0; $i -lt 90; $i++) {
+            # Запрос health; ошибки соединения глотаем — сервер ещё запускается
+            try { if ((Invoke-WebRequest http://127.0.0.1:8766/api/health -UseBasicParsing).StatusCode -eq 200) { $ok = $true; break } } catch {}
+            # Пауза секунда
+            Start-Sleep -Seconds 1
+          }
+          # Не поднялся — падаем
+          if (-not $ok) { throw "установленная программа не запустилась" }
+          # Состояние обновления
+          $u = Invoke-RestMethod http://127.0.0.1:8766/api/update
+          # Установленная программа умеет обновляться сама и пока ничего не делает
+          if (-not $u.supported -or $u.state -ne 'idle') { throw "обновление в одну кнопку недоступно: $($u | ConvertTo-Json -Compress)" }
+          # Останавливаем программу
+          Stop-Process -Id $app.Id -Force
+          # Даём Windows отпустить файлы
+          Start-Sleep -Seconds 2
+          # Ставим поверх — так выглядит обновление
+          $p = Start-Process dist\Nitegraf-Setup.exe -ArgumentList $quiet -Wait -PassThru
+          # Тоже без ошибки
+          if ($p.ExitCode -ne 0) { throw "установка поверх: код $($p.ExitCode)" }
+          # Тихое удаление
+          $p = Start-Process "$dir\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait -PassThru
+          # Без ошибки
+          if ($p.ExitCode -ne 0) { throw "удаление: код $($p.ExitCode)" }
+          # Итог в журнал
+          Write-Host "OK: тихая установка, обновление поверх и удаление"
+
       # Сохранить файлы как артефакт сборки
       - uses: actions/upload-artifact@v5
         # Параметры
@@ -167,6 +226,8 @@ jobs:
           path: |
             # Установщик (строки с # — комментарии, их понимает upload-artifact)
             dist/Nitegraf-Setup.exe
+            # Его контрольная сумма
+            dist/Nitegraf-Setup.exe.sha256
             # Портативная версия
             dist/Nitegraf-portable.zip
 
@@ -187,6 +248,7 @@ jobs:
 
           **Nitegraf-Setup.exe** — установщик (права администратора не нужны).
           **Nitegraf-portable.zip** — без установки: распакуйте и запустите Nitegraf.exe.
+          **Nitegraf-Setup.exe.sha256** — контрольная сумма установщика (по ней программа проверяет обновление).
 
           При первом запуске Windows может показать «Система Windows защитила ваш компьютер» —
           нажмите «Подробнее» → «Выполнить в любом случае» (у программы нет платной цифровой подписи).
@@ -196,8 +258,8 @@ jobs:
           gh release delete desktop-latest --yes --cleanup-tag 2>$null
           # До трёх попыток: сразу после удаления GitHub иногда ещё «помнит» старый тег, и создание падает
           for ($i = 1; $i -le 3; $i++) {
-            # Создаём новый релиз с двумя файлами (строка продолжается на следующей — обратная кавычка в конце)
-            gh release create desktop-latest dist/Nitegraf-Setup.exe dist/Nitegraf-portable.zip `
+            # Создаём новый релиз: установщик, его контрольная сумма, портативная версия (строка продолжается на следующей — обратная кавычка в конце)
+            gh release create desktop-latest dist/Nitegraf-Setup.exe dist/Nitegraf-Setup.exe.sha256 dist/Nitegraf-portable.zip `
               --title "Нитеграф для Windows $env:APP_VERSION" --notes $notes --target $env:GITHUB_SHA --latest
             # Получилось — дальше не пробуем
             if ($LASTEXITCODE -eq 0) { break }

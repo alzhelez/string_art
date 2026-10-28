@@ -197,6 +197,27 @@ export interface AppInfo {
   version: string;
   // Программа для Windows
   desktop: boolean;
+  // Умеет обновляться в одну кнопку (программа для Windows с номером версии)
+  update?: boolean;
+}
+
+// Шаг обновления в одну кнопку
+export type UpdateState = "idle" | "checking" | "downloading" | "verifying" | "installing" | "error";
+
+// Состояние обновления (GET /api/update)
+export interface UpdateStatus {
+  // Шаг
+  state: UpdateState;
+  // Какая версия ставится
+  version: string | null;
+  // Скачано байт
+  done: number;
+  // Всего байт (0 — пока неизвестно)
+  total: number;
+  // Текст ошибки для человека
+  error: string | null;
+  // Доступно ли обновление в одну кнопку
+  supported: boolean;
 }
 
 // Полный проект
@@ -327,6 +348,10 @@ export const api = {
   features: async (): Promise<Features> => (await request<{ features: Features }>("/api/config")).features,
   // Версия программы
   appInfo: async (): Promise<AppInfo | null> => (await request<{ app?: AppInfo }>("/api/config")).app ?? null,
+  // Состояние обновления в одну кнопку
+  updateStatus: () => request<UpdateStatus>("/api/update", { cache: "no-store" }),
+  // Начать обновление: программа скачает установщик, проверит его и перезапустится
+  startUpdate: () => request<UpdateStatus>("/api/update", { method: "POST" }),
   // Отметка времени плетения
   activity: (id: string, body: { date: string; seconds: number; steps: number }, keepalive = false) =>
     // POST-запрос

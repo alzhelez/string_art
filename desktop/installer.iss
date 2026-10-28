@@ -90,3 +90,16 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\Nitegraf.exe"; Tasks: desktop
 [Run]
 ; Галочка «Запустить Нитеграф» в конце установки
 Filename: "{app}\Nitegraf.exe"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; Обновление из программы (тихая установка с /RELAUNCH=1) — сразу запустить новую версию
+Filename: "{app}\Nitegraf.exe"; Flags: nowait; Check: ShouldRelaunch
+
+; Код на Pascal Script
+[Code]
+// Запустить программу после установки: только при тихой установке и только по просьбе программы
+function ShouldRelaunch: Boolean;
+// Тело функции
+begin
+  // Тихо (/SILENT или /VERYSILENT) и передан /RELAUNCH=1
+  Result := WizardSilent and (ExpandConstant('{param:RELAUNCH|0}') = '1');
+// Конец функции
+end;

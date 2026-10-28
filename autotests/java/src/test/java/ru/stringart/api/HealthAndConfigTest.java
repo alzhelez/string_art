@@ -115,4 +115,20 @@ public class HealthAndConfigTest extends BaseApiTest {
             api().queryParam("diameter_cm", d).get("/api/geometry").then().statusCode(422);
         }
     }
+
+    // Тест
+    @Test(description = "TC-API-34 в веб-версии обновление в одну кнопку недоступно")
+    // Номер кейса
+    @Story("TC-API-34")
+    // Обновление недоступно
+    public void updateNotSupportedOnWeb() {
+        // Состояние: ждём, не поддерживается
+        api().get("/api/update").then().statusCode(200).body("state", equalTo("idle")).body("supported", equalTo(false));
+        // Начать нельзя → 404 с пояснением
+        String detail = api().post("/api/update").then().statusCode(404).extract().jsonPath().getString("detail");
+        // Текст
+        assertThat(detail).contains("только в программе для Windows");
+        // В настройках — «не обновляется»
+        api().get("/api/config").then().statusCode(200).body("app.update", equalTo(false));
+    }
 }

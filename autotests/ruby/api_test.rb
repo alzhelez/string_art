@@ -683,4 +683,20 @@ class StringArtApiTest < Minitest::Test
     # Не файл проекта → 400
     assert_equal '400', send_file.call('hello').code
   end
+
+  # TC-API-34: в веб-версии обновление в одну кнопку недоступно
+  def test_tc_api_34_update
+    # Состояние обновления
+    status = Api.json(Api.get('/api/update'))
+    # Ждём, не поддерживается
+    assert_equal %w[idle false], [status['state'], status['supported'].to_s]
+    # Пробуем начать
+    res = Api.http { |h| h.request(Net::HTTP::Post.new('/api/update')) }
+    # → 404
+    assert_equal '404', res.code
+    # С пояснением
+    assert_includes Api.json(res)['detail'], 'только в программе для Windows'
+    # В настройках — «не обновляется»
+    assert_equal false, Api.json(Api.get('/api/config'))['app']['update']
+  end
 end

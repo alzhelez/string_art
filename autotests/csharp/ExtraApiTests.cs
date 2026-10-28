@@ -337,4 +337,25 @@ public class ExtraApiTests : IClassFixture<ApiFixture>
         // Не файл проекта → 400
         Assert.Equal(HttpStatusCode.BadRequest, (await ImportFile(Encoding.UTF8.GetBytes("hello"))).StatusCode);
     }
+
+    // Тест
+    [Fact(DisplayName = "TC-API-34 в веб-версии обновление в одну кнопку недоступно")]
+    // Обновление недоступно
+    public async Task UpdateNotSupportedOnWeb()
+    {
+        // Состояние
+        var status = await ApiFixture.Json(await _api.Http.GetAsync("/api/update"));
+        // Ждём
+        Assert.Equal("idle", status["state"]!.GetValue<string>());
+        // Не поддерживается
+        Assert.False(status["supported"]!.GetValue<bool>());
+        // Пробуем начать
+        var start = await _api.Http.PostAsync("/api/update", null);
+        // → 404
+        Assert.Equal(HttpStatusCode.NotFound, start.StatusCode);
+        // С пояснением
+        Assert.Contains("только в программе для Windows", (await ApiFixture.Json(start))["detail"]!.GetValue<string>());
+        // В настройках — «не обновляется»
+        Assert.False((await ApiFixture.Json(await _api.Http.GetAsync("/api/config")))["app"]!["update"]!.GetValue<bool>());
+    }
 }

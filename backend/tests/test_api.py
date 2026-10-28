@@ -529,8 +529,8 @@ def test_config_reports_app_version(client, monkeypatch, tmp_path):
 
     # Настройки
     cfg = client.get("/api/config").json()
-    # В разработке версия «dev», не десктоп
-    assert cfg["app"] == {"version": "dev", "desktop": False}
+    # В разработке версия «dev», не десктоп, без обновления в одну кнопку
+    assert cfg["app"] == {"version": "dev", "desktop": False, "update": False}
     # Подменяем папку программы на временную
     monkeypatch.setattr(config, "BASE_DIR", tmp_path)
     # Кладём файл с версией, как в сборке

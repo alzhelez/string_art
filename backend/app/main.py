@@ -36,7 +36,7 @@ from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 # Наши модули: настройки, слои цветных портретов, палитра, подготовка фото, база данных
-from . import config, layers as color_layers, palette, photo, storage, transfer
+from . import config, layers as color_layers, palette, photo, storage, transfer, updater
 # Алгоритм и предрасчёт линий
 from .algorithm import build_line_cache, generate_sequence
 # Шаг гвоздей по дуге и метки гвоздей
@@ -858,6 +858,32 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# Умеет ли эта установка обновляться в одну кнопку
+def _update_supported() -> bool:
+    # Программа для Windows с номером версии (сборка разработчика не обновляется)
+    return updater.supported(static_dir() is not None) and config.app_version() != "dev"
+
+
+# Состояние обновления: ждём / качаем (сколько) / устанавливаем / ошибка
+@app.get("/api/update")
+# Ответ — состояние и признак «доступно»
+def update_status() -> dict[str, Any]:
+    # Состояние и признак
+    return {**updater.status(), "supported": _update_supported()}
+
+
+# Начать обновление: скачать установщик с GitHub, проверить, поставить и перезапуститься
+@app.post("/api/update", status_code=202)
+# Ответ — состояние сразу после начала
+def update_start() -> dict[str, Any]:
+    # Не программа для Windows или сборка разработчика
+    if not _update_supported():
+        # 404 с пояснением
+        raise HTTPException(404, "Обновление в одну кнопку есть только в программе для Windows")
+    # Начинаем (повторное нажатие — просто текущее состояние)
+    return {**updater.start(config.app_version()), "supported": True}
+
+
 # Константы для фронтенда — один источник правды
 @app.get("/api/config")
 # Собрать настройки
@@ -910,8 +936,8 @@ def get_config() -> dict[str, Any]:
         # Предел размера загрузки
         "max_upload_bytes": config.MAX_UPLOAD_BYTES,
         # Программа для Windows сама проверяет, не вышла ли новая версия
-        # Версия программы и признак «это программа для Windows»
-        "app": {"version": config.app_version(), "desktop": static_dir() is not None},
+        # Версия программы, признак «это программа для Windows» и «умеет обновляться сама»
+        "app": {"version": config.app_version(), "desktop": static_dir() is not None, "update": _update_supported()},
         # Какие возможности доступны в этой установке
         "features": {
             # Поиск лица
