@@ -3,8 +3,8 @@
 
 // Хуки React
 import { useCallback, useEffect, useRef, useState } from "react";
-// Запросы к API, тип ошибки и типы данных
-import { api, ApiError, type AutoTone, type Features, type ImageInfo } from "@/lib/api";
+// Запросы к API, полный адрес API, тип ошибки и типы данных
+import { api, ApiError, apiUrl, type AutoTone, type Features, type ImageInfo } from "@/lib/api";
 // Ограничение настроек, настройки по умолчанию, нормализация центра кадра
 import { clampPrep, DEFAULT_PREP, normalizeCenter, type Prep } from "@/lib/prep";
 
@@ -54,7 +54,7 @@ async function maskRequest(id: string, method: "GET" | "POST"): Promise<MaskStat
   // Сеть может быть недоступна
   try {
     // Запрос
-    res = await fetch(`/api/images/${id}/mask`, { method });
+    res = await fetch(apiUrl(`/api/images/${id}/mask`), { method });
   // Нет связи
   } catch {
     // Понятная ошибка
@@ -335,7 +335,7 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
     // Не получилось
     if (!blob) return;
     // PUT-запрос с PNG
-    const res = await fetch(`/api/images/${info.id}/mask.png`, {
+    const res = await fetch(apiUrl(`/api/images/${info.id}/mask.png`), {
       // Метод
       method: "PUT",
       // Тип тела
@@ -508,7 +508,7 @@ export function usePhotoEditor(info: ImageInfo | null, initial?: Partial<Prep>) 
     // Ждём уже начатые отправки
     await uploading.current;
     // Просим сервер вернуть автоматическую маску
-    await fetch(`/api/images/${info.id}/mask/edits`, { method: "DELETE" }).catch(() => null);
+    await fetch(apiUrl(`/api/images/${info.id}/mask/edits`), { method: "DELETE" }).catch(() => null);
     // Отмены больше не нужны
     undoStack.current = [];
     // Нечего отменять

@@ -67,6 +67,10 @@ export interface Features {
   face_detection: boolean;
   // Удаление фона
   background_removal: boolean;
+  // PDF-инструкция и шаблон (нет в версии для телефона; у сервера поля нет — значит есть)
+  pdf?: boolean;
+  // Всё считается в самом браузере (версия для телефона)
+  local?: boolean;
 }
 
 // Проект в списке
@@ -266,6 +270,15 @@ export class ApiError extends Error {
   }
 }
 
+// Адрес сайта: пусто, а у версии для телефона на GitHub Pages — /string_art
+export const API_BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+/** Полный адрес API с учётом адреса сайта: «/api/projects» → «/string_art/api/projects». */
+export function apiUrl(path: string): string {
+  // Адрес сайта + путь
+  return `${API_BASE}${path}`;
+}
+
 // Общий запрос к API: возвращает разобранный JSON или бросает ApiError
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   // Ответ сервера
@@ -273,7 +286,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   // fetch бросает исключение, если сервер недоступен
   try {
     // Делаем запрос
-    res = await fetch(url, init);
+    res = await fetch(apiUrl(url), init);
     // Сеть недоступна или бэкенд не запущен
   } catch {
     // Код 0 — «нет связи» и подсказка
@@ -425,21 +438,21 @@ export const api = {
       body: JSON.stringify({ prep, diameter_cm: diameterCm }),
     }),
   // Адрес оригинала фото
-  imageUrl: (id: string) => `/api/images/${id}/original.jpg`,
+  imageUrl: (id: string) => apiUrl(`/api/images/${id}/original.jpg`),
   // Адрес маски фона
-  maskUrl: (id: string) => `/api/images/${id}/mask.png`,
+  maskUrl: (id: string) => apiUrl(`/api/images/${id}/mask.png`),
   // Адрес превью картины нужного размера (и, по желанию, числа линий)
   previewUrl: (id: string, size: number, lines?: number) =>
     // Строка адреса с параметрами
-    `/api/projects/${id}/preview.png?size=${size}${lines ? `&lines=${lines}` : ""}`,
+    apiUrl(`/api/projects/${id}/preview.png?size=${size}${lines ? `&lines=${lines}` : ""}`),
   // Адрес подготовленного фото проекта
-  sourceUrl: (id: string) => `/api/projects/${id}/source.png`,
+  sourceUrl: (id: string) => apiUrl(`/api/projects/${id}/source.png`),
   // Адрес PDF-инструкции
-  pdfUrl: (id: string) => `/api/projects/${id}/instructions.pdf`,
+  pdfUrl: (id: string) => apiUrl(`/api/projects/${id}/instructions.pdf`),
   // Адрес шаблона разметки
-  templateUrl: (id: string, paper: "A4" | "A3" = "A4") => `/api/projects/${id}/template.pdf?paper=${paper}`,
+  templateUrl: (id: string, paper: "A4" | "A3" = "A4") => apiUrl(`/api/projects/${id}/template.pdf?paper=${paper}`),
   // Файл проекта .nitegraf (перенос на другой компьютер или в телефон)
-  exportUrl: (id: string) => `/api/projects/${id}/export`,
+  exportUrl: (id: string) => apiUrl(`/api/projects/${id}/export`),
   // Открыть файл проекта — новый портрет со всем прогрессом
   importFile: (file: Blob, filename: string) => {
     // Форма с файлом

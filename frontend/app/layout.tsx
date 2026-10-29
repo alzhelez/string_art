@@ -4,6 +4,10 @@ import type { Metadata, Viewport } from "next";
 import { UpdateNotice } from "@/components/UpdateNotice";
 // Шапка сайта и скрипт ранней установки темы
 import { AppHeader, THEME_SCRIPT } from "@/components/AppHeader";
+// Запуск версии для телефона (в остальных версиях просто показывает страницу)
+import { LocalGate } from "@/components/LocalGate";
+// Признак версии для телефона и адрес сайта
+import { BASE_PATH, LOCAL_MODE } from "@/lib/local/client";
 // Шрифт Golos Text, обычное начертание (шрифты лежат в пакете — работают без интернета)
 import "@fontsource/golos-text/400.css";
 // Golos Text, средний
@@ -23,6 +27,15 @@ export const metadata: Metadata = {
   title: "Нитеграф — портрет из нитей",
   // Описание
   description: "Превращает фото в круглую картину из лески: 240 гвоздей, пошаговая инструкция, расчёт катушки.",
+  // Версия для телефона ставится как приложение: манифест и значок для iPhone
+  ...(LOCAL_MODE && {
+    // Манифест приложения
+    manifest: `${BASE_PATH}/manifest.webmanifest`,
+    // Значок на экране «Домой» у iPhone
+    icons: { apple: `${BASE_PATH}/icons/icon-192.png` },
+    // На iPhone — без адресной строки
+    appleWebApp: { capable: true, title: "Нитеграф", statusBarStyle: "default" },
+  }),
 };
 
 // Настройки экрана для телефонов
@@ -57,10 +70,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppHeader />
         {/* Основное содержимое */}
         <main className="site-main">
-          {/* Уведомление об обновлении (если есть) */}
-          <UpdateNotice />
-          {/* Сама страница */}
-          {children}
+          {/* В версии для телефона — после запуска «сервера» в браузере */}
+          <LocalGate>
+            {/* Уведомление об обновлении (если есть) */}
+            <UpdateNotice />
+            {/* Сама страница */}
+            {children}
+          </LocalGate>
         </main>
       </body>
     </html>

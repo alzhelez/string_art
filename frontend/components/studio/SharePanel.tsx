@@ -5,6 +5,8 @@
 import { useEffect, useRef, useState } from "react";
 // Адрес шаблона
 import { api } from "@/lib/api";
+// Признак версии для телефона (без PDF)
+import { LOCAL_MODE } from "@/lib/local/client";
 // Числа по-русски
 import { num } from "@/lib/format";
 // Таймлапс, открытка, сохранение файла, формат видео
@@ -196,7 +198,9 @@ export function SharePanel({
   return (
     // Панель
     <div className="share-panel">
-      {/* Блок «шаблон» */}
+      {/* Блок «шаблон» (в версии для телефона PDF нет — только в программе на компьютере) */}
+      {!LOCAL_MODE && (
+      // Блок
       <div className="share-block">
         {/* Заголовок */}
         <h3>
@@ -230,6 +234,7 @@ export function SharePanel({
           </button>
         </div>
       </div>
+      )}
 
       {/* Блок «открытка и видео» */}
       <div className="share-block">

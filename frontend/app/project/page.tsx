@@ -27,6 +27,8 @@ import { useDebouncedPatch } from "@/hooks/useDebouncedPatch";
 import { routes, useProjectId } from "@/lib/routes";
 // API и типы
 import { api, ApiError, type Project, type Similarity } from "@/lib/api";
+// Признак версии для телефона (без PDF)
+import { LOCAL_MODE } from "@/lib/local/client";
 // Пределы числа линий
 import { MAX_LINES, MIN_LINES } from "@/lib/constants";
 // Числа по-русски
@@ -349,13 +351,16 @@ function StudioPageInner() {
                   // — одна нить: шаг
                   : `Продолжить с шага ${num(progressStep)}`}
             </Link>
-            {/* Скачать PDF */}
-            <button type="button" className="btn secondary" onClick={downloadPdf} disabled={downloading}>
-              {/* Значок */}
-              <Icon name="download" size={18} />
-              {/* Надпись */}
-              {downloading ? "Готовим PDF…" : "Скачать инструкцию PDF"}
-            </button>
+            {/* Скачать PDF (в версии для телефона PDF нет — только в программе на компьютере) */}
+            {!LOCAL_MODE && (
+              // Кнопка
+              <button type="button" className="btn secondary" onClick={downloadPdf} disabled={downloading}>
+                {/* Значок */}
+                <Icon name="download" size={18} />
+                {/* Надпись */}
+                {downloading ? "Готовим PDF…" : "Скачать инструкцию PDF"}
+              </button>
+            )}
           </div>
 
           {/* Секция «Размер» */}

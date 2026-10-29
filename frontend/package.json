@@ -13,7 +13,9 @@
       "test:watch": "Юнит-тесты в режиме наблюдения — перезапуск при изменении файлов",
       "test:coverage": "Юнит-тесты с отчётом о покрытии кода (папка coverage/)",
       "test:e2e": "Сквозные тесты Playwright (сами поднимают бэкенд и фронтенд)",
-      "build:desktop": "Статическая сборка в папку out/ для программы для Windows"
+      "build:desktop": "Статическая сборка в папку out/ для программы для Windows",
+      "build:pages": "Версия для телефона: статический сайт в папке out/ для GitHub Pages (всё считается в браузере)",
+      "serve:pages": "Показать собранную версию для телефона локально: http://127.0.0.1:3002/string_art/"
     },
     "dependencies": {
       "@fontsource/golos-text": "Шрифт текста Golos (лежит в пакете — работает без интернета)",
@@ -50,6 +52,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "build:desktop": "cross-env STRINGART_DESKTOP=1 next build --webpack",
+    "build:pages": "cross-env STRINGART_PAGES=1 next build --webpack && node scripts/pages-postbuild.mjs",
+    "serve:pages": "node scripts/serve-pages.mjs",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {

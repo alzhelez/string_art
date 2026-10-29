@@ -21,6 +21,10 @@ frontend/*.tsbuildinfo
 frontend/test-results/
 # HTML-отчёт Playwright
 frontend/playwright-report/
+# HTML-отчёт Playwright версии для телефона
+frontend/playwright-report-pages/
+# Отладочная сборка версии для телефона
+frontend/out-debug/
 # Автотесты
 # Сборка Maven (Java)
 autotests/java/target/

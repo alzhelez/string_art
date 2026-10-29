@@ -70,7 +70,9 @@
     // Типы маршрутов, которые создаёт Next.js
     ".next/types/**/*.ts",
     // То же для dev-режима
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    "out/types/**/*.ts",
+    "out/dev/types/**/*.ts"
   ],
   // Что не проверять
   "exclude": [

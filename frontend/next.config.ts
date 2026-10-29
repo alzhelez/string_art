@@ -12,8 +12,30 @@ const backend = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 // Признак сборки для программы
 const desktop = process.env.STRINGART_DESKTOP === "1";
 
-// Две разные конфигурации: для программы и для обычного запуска
-const nextConfig: NextConfig = desktop
+// Версия для телефона (npm run build:pages): статический сайт на GitHub Pages, всё считается в браузере
+const pages = process.env.STRINGART_PAGES === "1";
+// Адрес сайта на GitHub Pages: https://<владелец>.github.io/string_art/
+const basePath = process.env.PAGES_BASE_PATH ?? "/string_art";
+
+// Три конфигурации: телефон, программа для Windows и обычный запуск
+const nextConfig: NextConfig = pages
+  // Версия для телефона
+  ? {
+      // Статический экспорт
+      output: "export",
+      // Куда сложить
+      distDir: "out",
+      // Сайт лежит не в корне домена, а в /string_art
+      basePath,
+      // /project/ → project/index.html — так GitHub Pages находит страницы без расширения
+      trailingSlash: true,
+      // Оптимизация картинок требует сервер — отключаем
+      images: { unoptimized: true },
+      // Признаки для кода в браузере: работать без сервера и где лежит сайт
+      env: { NEXT_PUBLIC_LOCAL: "1", NEXT_PUBLIC_BASE_PATH: basePath },
+    }
+  // Иначе — программа для Windows?
+  : desktop
   // Программа для Windows
   ? {
       // Статический экспорт: только HTML/JS/CSS-файлы

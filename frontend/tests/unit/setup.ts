@@ -8,5 +8,9 @@ import { afterEach, vi } from "vitest";
 // После каждого теста очищаем DOM, чтобы тесты не влияли друг на друга
 afterEach(() => cleanup());
 
-// jsdom не умеет canvas — отдаём «пустой» контекст, чтобы Board рендерился без ошибок.
-HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+// jsdom не умеет canvas — отдаём «пустой» контекст, чтобы Board рендерился без ошибок
+// (в тестах без DOM — «@vitest-environment node» — холста нет вовсе, подменять нечего).
+if (typeof HTMLCanvasElement !== "undefined") {
+  // Пустой контекст
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+}

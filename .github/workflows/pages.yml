@@ -1,0 +1,149 @@
+# Версия для телефона на GitHub Pages: сайт, который всё считает и хранит в самом браузере.
+# Адрес после включения Pages: https://<владелец>.github.io/string_art/
+# Включить один раз: Settings → Pages → Build and deployment → Source: GitHub Actions.
+# Пока Pages не включены, сборка и проверки идут, а публикация пропускается с пояснением.
+# Название процесса во вкладке Actions
+name: pages
+
+# Когда запускать
+on:
+  # При отправке коммитов в main, если изменился фронтенд или этот файл
+  push:
+    # Ветка
+    branches: [main]
+    # Пути
+    paths: ["frontend/**", ".github/workflows/pages.yml"]
+  # Проверка pull request (без публикации)
+  pull_request:
+    # Пути
+    paths: ["frontend/**", ".github/workflows/pages.yml"]
+  # Вручную кнопкой
+  workflow_dispatch:
+
+# Права по умолчанию — только чтение
+permissions:
+  # Чтение кода
+  contents: read
+
+# Публикации не отменяют друг друга посреди выкладки
+concurrency:
+  # Одна группа на ветку
+  group: pages-${{ github.ref }}
+  # Новая ждёт окончания старой
+  cancel-in-progress: false
+
+# Задачи
+jobs:
+  # Сборка и проверка в настоящем браузере
+  build:
+    # Название
+    name: Телефон · сборка и Playwright
+    # Машина
+    runs-on: ubuntu-24.04
+    # Не дольше 20 минут
+    timeout-minutes: 20
+    # Шаги
+    steps:
+      # Код
+      - uses: actions/checkout@v5
+      # Node.js с кэшем npm
+      - uses: actions/setup-node@v5
+        # Версия и кэш
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      # Пакеты и сборка версии для телефона
+      - name: Сборка версии для телефона
+        # В папке фронтенда
+        working-directory: frontend
+        # Чистая установка и статическая сборка с service worker
+        run: npm ci && npm run build:pages
+      # Браузер для проверок
+      - name: Chromium для Playwright
+        # В папке фронтенда
+        working-directory: frontend
+        # Браузер с системными библиотеками
+        run: npx playwright install --with-deps chromium
+      # Сквозные тесты PH-01…PH-06 на собранном сайте
+      - name: Проверки версии для телефона (Playwright)
+        # В папке фронтенда
+        working-directory: frontend
+        # Отдельная конфигурация: статический сервер, без Python
+        run: npx playwright test -c playwright.pages.config.ts
+      # Отчёт при падении
+      - name: Отчёт Playwright
+        # Только если что-то упало
+        if: failure()
+        # Сохранить артефакт
+        uses: actions/upload-artifact@v5
+        # Папка отчёта
+        with: { name: playwright-report-pages, path: frontend/playwright-report-pages }
+      # Готовый сайт — артефакт для GitHub Pages
+      - name: Сайт для GitHub Pages
+        # Не для pull request
+        if: github.event_name != 'pull_request'
+        # Упаковка
+        uses: actions/upload-pages-artifact@v5
+        # Папка сборки
+        with: { path: frontend/out }
+
+  # Включены ли Pages в настройках репозитория
+  check:
+    # Название
+    name: Телефон · Pages включены?
+    # Не для pull request
+    if: github.event_name != 'pull_request'
+    # Машина
+    runs-on: ubuntu-24.04
+    # Чтение настроек Pages
+    permissions: { pages: read }
+    # Результат для следующей задачи
+    outputs:
+      # true / false
+      enabled: ${{ steps.pages.outputs.enabled }}
+    # Шаги
+    steps:
+      # Проверка через API GitHub
+      - id: pages
+        # Токен для gh
+        env: { GH_TOKEN: "${{ github.token }}" }
+        # Есть настройки Pages — включены
+        run: |
+          # Запрос настроек Pages (404 — не включены)
+          if gh api "repos/${{ github.repository }}/pages" > /dev/null 2>&1; then
+            # Включены
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          # Не включены
+          else
+            # Пояснение в сводке запуска
+            echo "::notice::GitHub Pages не включены — публикация пропущена. Settings → Pages → Source: GitHub Actions, затем Run workflow."
+            # Не включены
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Публикация
+  deploy:
+    # Название
+    name: Телефон · публикация на GitHub Pages
+    # После сборки и проверки настроек
+    needs: [build, check]
+    # Только если Pages включены
+    if: needs.check.outputs.enabled == 'true'
+    # Машина
+    runs-on: ubuntu-24.04
+    # Права публикации
+    permissions:
+      # Запись в Pages
+      pages: write
+      # Подтверждение, что публикует именно этот процесс
+      id-token: write
+    # Окружение github-pages (адрес сайта появится в сводке)
+    environment:
+      # Имя окружения
+      name: github-pages
+      # Адрес сайта
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Шаги
+    steps:
+      # Публикуем артефакт сборки
+      - id: deployment
+        # Действие GitHub
+        uses: actions/deploy-pages@v5
