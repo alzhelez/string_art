@@ -223,8 +223,22 @@ function StudioPageInner() {
     await flush();
     // Временная ссылка
     const a = document.createElement("a");
-    // Адрес файла (имя задаёт бэкенд: «<название>.nitegraf»)
-    a.href = api.exportUrl(project.id);
+    // Версия для телефона: Safari на iPhone не скачивает ответы service worker по ссылке —
+    // получаем файл сами и отдаём его как Blob с именем
+    if (LOCAL_MODE) {
+      // Файл от «сервера» в браузере
+      const blob = await (await fetch(api.exportUrl(project.id))).blob();
+      // Временный адрес Blob
+      a.href = URL.createObjectURL(blob);
+      // Имя файла
+      a.download = `${project.name}.nitegraf`;
+      // Адрес освободим через минуту (скачивание уже началось)
+      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+      // Обычная версия
+    } else {
+      // Адрес файла (имя задаёт бэкенд: «<название>.nitegraf»)
+      a.href = api.exportUrl(project.id);
+    }
     // В документ
     document.body.appendChild(a);
     // «Нажать»

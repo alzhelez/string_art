@@ -28,10 +28,28 @@ import {
   type Prep,
 } from "@/lib/prep";
 
+// Папка autotests/fixtures: ищем вверх от папки тестов — так она находится и из копии
+// проекта, в которой работает Stryker (frontend/.stryker-tmp/sandbox-…)
+function fixturesDir(): string {
+  // Начинаем с папки теста
+  let dir = __dirname;
+  // Пока не дошли до корня диска
+  while (path.dirname(dir) !== dir) {
+    // Кандидат
+    const candidate = path.join(dir, "autotests", "fixtures");
+    // Нашли
+    if (fs.existsSync(candidate)) return candidate;
+    // Выше
+    dir = path.dirname(dir);
+  }
+  // Не нашли — путь по умолчанию (ошибка будет понятной: нет файла)
+  return path.join(__dirname, "..", "..", "..", "autotests", "fixtures");
+}
+
 // Эталон из autotests/fixtures — те же данные проверяет backend/tests/test_photo.py
 const golden = JSON.parse(
-  // Путь от tests/unit до корня проекта и дальше к файлу
-  fs.readFileSync(path.join(__dirname, "..", "..", "..", "autotests", "fixtures", "prep-golden.json"), "utf-8"),
+  // Файл эталона
+  fs.readFileSync(path.join(fixturesDir(), "prep-golden.json"), "utf-8"),
 // Описываем форму эталона для TypeScript:
 ) as {
   // ширина картинки

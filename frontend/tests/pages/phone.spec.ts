@@ -140,7 +140,9 @@ test("PH-04 «Сохранить файл проекта» в телефоне",
 });
 
 // Работает без интернета
-test("PH-05 без интернета: главная и студия открываются", async ({ page, context }) => {
+test("PH-05 без интернета: главная и студия открываются", async ({ page, context, browserName }) => {
+  // Playwright не умеет «выключать сеть» у WebKit вместе с service worker (внутренняя ошибка браузера) — только Chrome
+  test.skip(browserName === "webkit", "эмуляция офлайна Playwright в WebKit не работает с service worker");
   // Портрет (заодно всё сохраняется в кэш)
   const id = await create(page);
   // Даём service worker сохранить файлы
