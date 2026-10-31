@@ -56,16 +56,18 @@ jobs:
         working-directory: frontend
         # Чистая установка и статическая сборка с service worker
         run: npm ci && npm run build:pages
-      # Браузер для проверок
-      - name: Chromium для Playwright
+      # Браузеры для проверок: Chrome (Android) и WebKit (Safari на iPhone)
+      - name: Chromium и WebKit для Playwright
         # В папке фронтенда
         working-directory: frontend
-        # Браузер с системными библиотеками
-        run: npx playwright install --with-deps chromium
-      # Сквозные тесты PH-01…PH-06 на собранном сайте
+        # Браузеры с системными библиотеками
+        run: npx playwright install --with-deps chromium webkit
+      # Сквозные тесты PH-01…PH-08 на собранном сайте: Android и iPhone
       - name: Проверки версии для телефона (Playwright)
         # В папке фронтенда
         working-directory: frontend
+        # Включить iPhone (Safari)
+        env: { PAGES_WEBKIT: "1" }
         # Отдельная конфигурация: статический сервер, без Python
         run: npx playwright test -c playwright.pages.config.ts
       # Отчёт при падении

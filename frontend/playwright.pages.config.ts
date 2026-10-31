@@ -1,57 +1,56 @@
-// Сквозные тесты версии для телефона (GitHub Pages): собранный сайт без Python-бэкенда.
+// Сквозные тесты версии для телефона (GitHub Pages): собранный сайт из out/ в настоящем браузере.
 // Перед запуском: npm run build:pages. Запуск: npx playwright test -c playwright.pages.config.ts
+// Бэкенд не нужен — всё считается и хранится в браузере.
 
-// Настройки Playwright и готовые устройства
+// Настройки и готовые устройства
 import { defineConfig, devices } from "@playwright/test";
 
 // Порт статического сервера
-const PORT = 3002;
+const PORT = 3003;
 
 // Настройки
 export default defineConfig({
-  // Тесты версии для телефона
+  // Папка тестов
   testDir: "./tests/pages",
-  // Цветной портрет на слабой машине CI считается дольше — 2 минуты на тест
+  // Тест — до 2 минут (расчёт цветного портрета в телефоне)
   timeout: 120_000,
-  // Ожидание проверок
-  expect: { timeout: 15_000 },
-  // По одному: тесты делят хранилище браузера внутри своего контекста, но не мешают друг другу
+  // Ожидание проверок — до 30 с
+  expect: { timeout: 30_000 },
+  // По одному: у каждого теста своё хранилище браузера, но порт один
   workers: 1,
-  // В CI — одна повторная попытка
+  // В CI — один повтор
   retries: process.env.CI ? 1 : 0,
-  // Отчёты: в CI — список, аннотации GitHub, HTML и JUnit
-  reporter: process.env.CI ? [["list"], ["github"], ["html", { open: "never", outputFolder: "playwright-report-pages" }], ["junit", { outputFile: "test-results/junit-pages.xml" }]] : "list",
-  // Общие настройки
+  // Отчёты
+  reporter: process.env.CI ? [["list"], ["github"], ["html", { open: "never", outputFolder: "playwright-report-pages" }]] : "list",
+  // Общие настройки страниц
   use: {
-    // Адрес сайта — как на GitHub Pages
+    // Сайт лежит в /string_art/, как на GitHub Pages
     baseURL: `http://127.0.0.1:${PORT}/string_art/`,
-    // Русский язык
+    // Русская локаль
     locale: "ru-RU",
-    // След выполнения — при падении
+    // След при ошибке
     trace: "retain-on-failure",
-    // Снимок — при падении
+    // Снимок при ошибке
     screenshot: "only-on-failure",
-    // Service worker должен работать
-    serviceWorkers: "allow",
-    // Браузер в UTF-8 — иначе русские имена скачанных файлов превращаются в «download»
-    launchOptions: { env: { ...process.env, LANG: process.env.LANG || "C.UTF-8" } },
   },
-  // Телефон Android и iPhone-размер экрана в Chromium
+  // Устройства: телефон Android (Chrome); в CI ещё iPhone (Safari/WebKit)
   projects: [
-    // Телефон Android
-    { name: "pixel", use: { ...devices["Pixel 7"] } },
+    // Android
+    { name: "android-chrome", use: { ...devices["Pixel 7"] } },
+    // iPhone — только если браузер WebKit установлен (в CI)
+    ...(process.env.PAGES_WEBKIT === "1" ? [{ name: "iphone-safari", use: { ...devices["iPhone 14"] } }] : []),
   ],
-  // Статический сервер собранной папки out/
+  // Статический сервер собранной версии
   webServer: {
     // Команда
-    command: "node scripts/serve-pages.mjs out",
+    command: `node scripts/serve-pages.mjs out`,
     // Порт
     env: { PORT: String(PORT) },
     // Готовность
     url: `http://127.0.0.1:${PORT}/string_art/`,
-    // Не использовать уже запущенный
+    // Не переиспользовать чужой
     reuseExistingServer: false,
-    // Время на запуск
+    // До 30 с
     timeout: 30_000,
   },
 });

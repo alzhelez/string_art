@@ -25,7 +25,10 @@
       "react-dom": "React для браузера"
     },
     "devDependencies": {
+      "@axe-core/playwright": "Проверка доступности страниц (WCAG 2.1 AA) в тестах Playwright",
       "@playwright/test": "Сквозные тесты в настоящем браузере",
+      "@stryker-mutator/core": "Мутационное тестирование: насколько хорошо юнит-тесты замечают ошибки в коде",
+      "@stryker-mutator/vitest-runner": "Stryker запускает тесты через Vitest",
       "@testing-library/jest-dom": "Удобные проверки DOM: toBeInTheDocument, toHaveTextContent…",
       "@testing-library/react": "Рендер компонентов в юнит-тестах",
       "@testing-library/user-event": "Имитация действий пользователя (клики, ввод)",
@@ -64,7 +67,10 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@playwright/test": "^1.63.0",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",

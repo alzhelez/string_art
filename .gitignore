@@ -47,3 +47,9 @@ frontend/out/
 backend/app/_version.txt
 # Данные покрытия pytest-cov (pytest --cov) — у каждого свои, в репозиторий не кладём
 .coverage
+# Мутационное тестирование: рабочая копия mutmut, отчёт и временная папка Stryker — у каждого свои
+backend/mutants/
+frontend/reports/
+frontend/.stryker-tmp/
+# Отчёт Playwright версии для телефона
+frontend/playwright-report-pages/

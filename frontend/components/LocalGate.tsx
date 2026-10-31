@@ -4,19 +4,21 @@
 // Текущий адрес страницы
 import { usePathname } from "next/navigation";
 // Состояние и эффекты React
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 // Запуск версии для телефона и подсказки о ходе расчёта
 import { LOCAL_MODE, onProgress, startLocal } from "@/lib/local/client";
 
 /**
- * Версия для телефона: пока не запущен «сервер» в браузере (service worker + Web Worker),
- * страницы не показываем — их запросы к /api/* некому было бы обработать.
+ * Версия для телефона: запускает «сервер» в браузере (service worker + Web Worker),
+ * показывает, где хранятся портреты, и подсказки о долгих расчётах. Страницы видны сразу:
+ * их запросы к API сами дожидаются запуска (см. request в lib/api.ts). Подменять страницу
+ * заставкой нельзя — тогда HTML сборки не совпадает с первой отрисовкой (ошибка React #418).
  * В обычной версии и в программе для Windows просто показывает содержимое.
  */
-// Ворота версии для телефона
+// Обёртка версии для телефона
 export function LocalGate({ children }: { children: React.ReactNode }) {
-  // Готово ли (обычная версия — сразу)
-  const [ready, setReady] = useState(!LOCAL_MODE);
+  // Запущен ли «сервер» (до запуска пояснение не показываем)
+  const [ready, setReady] = useState(false);
   // Текст ошибки запуска
   const [error, setError] = useState("");
   // Подсказка о ходе расчёта («Считаем нить 2 из 3…»)
@@ -28,49 +30,35 @@ export function LocalGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Обычная версия — ничего не делаем
     if (!LOCAL_MODE) return;
-    // Подписка на подсказки
-    const off = onProgress(setNote);
+    // Подписка на подсказки (как переход: сначала React дорисовывает страницу из HTML, потом меняет плашки)
+    const off = onProgress((n) => startTransition(() => setNote(n)));
     // Запускаем
     startLocal()
       // Готово
-      .then(() => setReady(true))
+      .then(() => startTransition(() => setReady(true)))
       // Не получилось
-      .catch((e: Error) => setError(e.message));
+      .catch((e: Error) => startTransition(() => setError(e.message)));
     // При уходе — отписка
     return off;
     // [] — один раз
   }, []);
 
-  // Ошибка запуска
-  if (error) {
-    // Сообщение вместо страницы
-    return (
-      // Блок ошибки
-      <div className="local-gate" role="alert">
-        {/* Заголовок */}
-        <h1>Не получилось запустить «Нитеграф»</h1>
-        {/* Причина */}
-        <p>{error}</p>
-      </div>
-    );
-  }
-  // Ещё запускается
-  if (!ready) {
-    // Заставка
-    return (
-      // Блок ожидания
-      <div className="local-gate" role="status" data-testid="local-starting">
-        {/* Текст */}
-        <p>Запускаем «Нитеграф» в браузере…</p>
-      </div>
-    );
-  }
-  // Готово
+  // Страница и плашки версии для телефона
   return (
     // Без лишней обёртки
     <>
+      {/* Не получилось запустить — объясняем над страницей */}
+      {error && (
+        // Ошибка
+        <div className="local-gate" role="alert">
+          {/* Заголовок */}
+          <h1>Не получилось запустить «Нитеграф»</h1>
+          {/* Причина */}
+          <p>{error}</p>
+        </div>
+      )}
       {/* На главной версии для телефона — коротко, где хранятся портреты */}
-      {LOCAL_MODE && path === "/" && (
+      {ready && path === "/" && (
         // Пояснение
         <p className="local-banner" data-testid="local-banner">
           {/* Текст */}

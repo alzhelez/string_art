@@ -9,8 +9,14 @@ from pathlib import Path
 # pytest — фреймворк тестов; фикстуры — подготовка данных для тестов
 import pytest
 
-# Папка с общими тестовыми файлами (её используют тесты на всех языках)
-FIXTURES = Path(__file__).resolve().parents[2] / "autotests" / "fixtures"
+# Папка с общими тестовыми файлами (её используют тесты на всех языках): ищем вверх от папки тестов —
+# так она находится и из копии проекта, которую делает mutmut (backend/mutants/tests)
+FIXTURES = next(
+    # Первая подходящая папка
+    (p / "autotests" / "fixtures" for p in Path(__file__).resolve().parents if (p / "autotests" / "fixtures").is_dir()),
+    # Не нашли — путь по умолчанию (ошибка будет понятной: нет файла)
+    Path(__file__).resolve().parents[2] / "autotests" / "fixtures",
+)
 
 
 # Фикстура на всю сессию, включается автоматически для каждого теста

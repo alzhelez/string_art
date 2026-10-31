@@ -165,7 +165,7 @@ describe("размытие", () => {
     // Сверху и снизу одинаково
     expect(b[7 * 21 + 10]).toBeCloseTo(b[13 * 21 + 10], 4);
     // Центр — максимум
-    expect(b[10 * 21 + 10]).toBe(Math.max(...b));
+    expect(b[10 * 21 + 10]).toBe(b.reduce((m, v) => Math.max(m, v), 0));
   });
 });
 
@@ -290,7 +290,7 @@ describe("цветные нити (как palette.py и layers.py)", () => {
     // Белая картинка
     const s = shrink(new Float32Array(400 * 400 * 3).fill(1), 400);
     // 64×64×3, всё белое
-    expect([s.length, Math.min(...s)]).toEqual([64 * 64 * 3, 1]);
+    expect([s.length, s.reduce((m, v) => Math.min(m, v), 1)]).toEqual([64 * 64 * 3, 1]);
   });
 
   // Слои: тот же порядок и близкое число линий

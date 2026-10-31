@@ -52,7 +52,7 @@ export default defineConfig({
     // компьютер — все тесты
     { name: "desktop-chrome", use: { ...devices["Desktop Chrome"] } },
     // телефон Pixel 7 — только тесты интерфейса
-    { name: "mobile-chrome", use: { ...devices["Pixel 7"] }, testMatch: /(ui|extras)\.spec\.ts/ },
+    { name: "mobile-chrome", use: { ...devices["Pixel 7"] }, testMatch: /(ui|extras|a11y)\.spec\.ts/ },
   ],
   // Серверы, которые Playwright сам поднимет перед тестами:
   webServer: [

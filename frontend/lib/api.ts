@@ -2,6 +2,8 @@
 import type { Prep } from "./prep";
 // Тип сводки по леске
 import type { ThreadStats } from "./thread";
+// Запуск версии для телефона (запросы ждут, пока заработает «сервер» в браузере)
+import { LOCAL_MODE, startLocal } from "./local/client";
 
 // Прямоугольник лица в долях фото
 export interface FaceBox {
@@ -285,6 +287,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let res: Response;
   // fetch бросает исключение, если сервер недоступен
   try {
+    // Версия для телефона: сначала дождаться «сервера» в браузере
+    if (LOCAL_MODE) await startLocal();
     // Делаем запрос
     res = await fetch(apiUrl(url), init);
     // Сеть недоступна или бэкенд не запущен

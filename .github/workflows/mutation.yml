@@ -1,0 +1,104 @@
+# Мутационное тестирование: проверка качества самих тестов.
+# В код вносятся маленькие «поломки» (мутанты); хороший набор тестов замечает почти каждую.
+# Бэкенд — mutmut (backend/setup.cfg), фронтенд — Stryker (frontend/stryker.config.mjs).
+# Долго (десятки минут), поэтому — раз в неделю и вручную, а не на каждый push.
+# Название процесса во вкладке Actions
+name: mutation
+
+# Когда запускать
+on:
+  # По понедельникам в 03:17 UTC
+  schedule: [{ cron: "17 3 * * 1" }]
+  # Вручную кнопкой
+  workflow_dispatch:
+
+# Только чтение кода
+permissions:
+  # Чтение
+  contents: read
+
+# Задачи
+jobs:
+  # Бэкенд
+  backend:
+    # Название
+    name: Мутанты · Python (mutmut)
+    # Машина
+    runs-on: ubuntu-24.04
+    # Не дольше 90 минут
+    timeout-minutes: 90
+    # Шаги
+    steps:
+      # Код
+      - uses: actions/checkout@v5
+      # Python с кэшем pip
+      - uses: actions/setup-python@v6
+        # Версия и кэш
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/requirements-dev.txt }
+      # Зависимости и mutmut
+      - run: pip install -r backend/requirements-dev.txt mutmut==3.8.0
+      # Запуск
+      - name: mutmut run
+        # В папке бэкенда
+        working-directory: backend
+        # Мутанты; итог — в сводке
+        run: |
+          # Прогон (код возврата не важен — смотрим итог ниже)
+          mutmut run || true
+          # Итоги по каждому мутанту (--all — и убитые тоже, для подсчёта доли)
+          mutmut results --all true > mutmut-results.txt || true
+          # Сколько каких: убитые, выжившие, таймауты
+          python - <<'PY'
+          # Подсчёт итогов mutmut для сводки запуска
+          import collections, pathlib, os
+          # Строки «имя: статус»
+          lines = [l.rsplit(":", 1) for l in pathlib.Path("mutmut-results.txt").read_text().splitlines() if ":" in l]
+          # Счёт статусов
+          count = collections.Counter(s.strip() for _, s in lines)
+          # Всего
+          total = sum(count.values()) or 1
+          # Доля убитых
+          killed = count.get("killed", 0) / total
+          # В сводку GitHub
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              # Заголовок и цифры
+              f.write(f"### mutmut: убито {killed:.0%}\n\n" + "\n".join(f"- {k}: {v}" for k, v in count.most_common()) + "\n")
+          # Ниже 60 % — провал
+          raise SystemExit(0 if killed >= 0.6 else f"Убито только {killed:.0%} мутантов (нужно ≥ 60 %)")
+          # Конец скрипта Python
+          PY
+      # Список выживших — артефактом
+      - uses: actions/upload-artifact@v5
+        # Всегда, даже при провале
+        if: always()
+        # Файл итогов
+        with: { name: mutmut-results, path: backend/mutmut-results.txt }
+
+  # Фронтенд
+  frontend:
+    # Название
+    name: Мутанты · TypeScript (Stryker)
+    # Машина
+    runs-on: ubuntu-24.04
+    # Не дольше 90 минут
+    timeout-minutes: 90
+    # Шаги
+    steps:
+      # Код
+      - uses: actions/checkout@v5
+      # Node.js с кэшем npm
+      - uses: actions/setup-node@v5
+        # Версия и кэш
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      # Пакеты и Stryker (порог провала — в stryker.config.mjs)
+      - name: stryker run
+        # В папке фронтенда
+        working-directory: frontend
+        # Установка и запуск
+        run: npm ci && npx stryker run
+      # HTML-отчёт: какие мутанты выжили и где
+      - uses: actions/upload-artifact@v5
+        # Всегда
+        if: always()
+        # Папка отчёта
+        with: { name: stryker-report, path: frontend/reports/mutation }
