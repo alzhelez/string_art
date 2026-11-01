@@ -254,17 +254,39 @@ jobs:
           нажмите «Подробнее» → «Выполнить в любом случае» (у программы нет платной цифровой подписи).
           Портреты хранятся в %LOCALAPPDATA%\Nitegraf и не пропадают при обновлении.
           "@
-          # Удаляем прошлый релиз вместе с тегом (если его нет — ошибку не показываем)
-          gh release delete desktop-latest --yes --cleanup-tag 2>$null
-          # До трёх попыток: сразу после удаления GitHub иногда ещё «помнит» старый тег, и создание падает
+          # Файлы релиза
+          $files = @('dist/Nitegraf-Setup.exe', 'dist/Nitegraf-Setup.exe.sha256', 'dist/Nitegraf-portable.zip')
+          # Название релиза — по нему программа узнаёт номер версии
+          $title = "Нитеграф для Windows $env:APP_VERSION"
+          # Релиз не удаляем, а обновляем на месте: при любом сбое старая версия остаётся доступной
+          gh release view desktop-latest > $null 2>&1
+          # Релиз уже есть
+          if ($LASTEXITCODE -eq 0) {
+            # Тег — на текущий коммит
+            git tag -f desktop-latest $env:GITHUB_SHA
+            # Отправляем перемещённый тег
+            git push -f origin refs/tags/desktop-latest
+            # Перемещение не удалось — провал шага
+            if ($LASTEXITCODE -ne 0) { throw "тег desktop-latest не обновился" }
+            # Новые файлы поверх старых (одноимённые заменяются)
+            $out = gh release upload desktop-latest @files --clobber 2>&1
+            # Причина сбоя — аннотацией
+            if ($LASTEXITCODE -ne 0) { Write-Host "::error::$(($out | Out-String).Trim() -replace '\r?\n', ' | ')" }
+            # Не загрузилось — провал шага (старые файлы при этом на месте)
+            if ($LASTEXITCODE -ne 0) { throw "файлы релиза не загрузились" }
+            # Название и описание — последним шагом: версия меняется, только когда файлы уже новые
+            gh release edit desktop-latest --title $title --notes $notes --latest
+            # Итог шага
+            exit $LASTEXITCODE
+          }
+          # Релиза нет (первая сборка) — создаём, до трёх попыток
           for ($i = 1; $i -le 3; $i++) {
-            # Создаём новый релиз: установщик, его контрольная сумма, портативная версия (строка продолжается на следующей — обратная кавычка в конце)
-            gh release create desktop-latest dist/Nitegraf-Setup.exe dist/Nitegraf-Setup.exe.sha256 dist/Nitegraf-portable.zip `
-              --title "Нитеграф для Windows $env:APP_VERSION" --notes $notes --target $env:GITHUB_SHA --latest
+            # Создаём релиз с файлами (вывод — в переменную, чтобы показать причину сбоя)
+            $out = gh release create desktop-latest @files --title $title --notes $notes --target $env:GITHUB_SHA --latest 2>&1
             # Получилось — дальше не пробуем
             if ($LASTEXITCODE -eq 0) { break }
-            # Не получилось — пишем предупреждение в журнал и ждём 15 секунд
-            Write-Host "::warning::Релиз не создался (попытка $i), повторяем"
+            # Не получилось — причина аннотацией (её видно на странице проверки) и пауза 15 секунд
+            Write-Host "::warning::Релиз не создался (попытка $i): $(($out | Out-String).Trim() -replace '\r?\n', ' | ')"
             # Пауза перед следующей попыткой
             Start-Sleep -Seconds 15
           }
