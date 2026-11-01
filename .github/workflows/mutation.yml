@@ -35,8 +35,8 @@ jobs:
       - uses: actions/setup-python@v6
         # Версия и кэш
         with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/requirements-dev.txt }
-      # Зависимости и mutmut
-      - run: pip install -r backend/requirements-dev.txt mutmut==3.8.0
+      # Зависимости и mutmut; pytest 9.1.1 — mutmut 3.8.0 опирается на поле, которого нет в pytest 9.2
+      - run: pip install -r backend/requirements-dev.txt mutmut==3.8.0 pytest==9.1.1
       # Запуск
       - name: mutmut run
         # В папке бэкенда
