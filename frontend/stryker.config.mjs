@@ -38,8 +38,8 @@ export default {
   reporters: ["html", "clear-text", "progress"],
   // Куда положить HTML-отчёт
   htmlReporter: { fileName: "reports/mutation/index.html" },
-  // Пороги: выше 80 % — хорошо, ниже 60 % — тревожно, ниже 50 % — провал
-  thresholds: { high: 80, low: 60, break: 50 },
+  // Пороги: выше 90 % — хорошо, ниже 85 % — тревожно, ниже 80 % — провал (сейчас ~92 %)
+  thresholds: { high: 90, low: 85, break: 80 },
   // TypeScript 7 (родной компилятор) не даёт JS-API, которым Stryker переписывает tsconfig для
   // project references; у нас их нет — указываем несуществующий файл, и этот шаг пропускается
   tsconfigFile: "tsconfig.stryker-skip.json",

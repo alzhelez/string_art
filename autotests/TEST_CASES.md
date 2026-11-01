@@ -97,7 +97,7 @@
 
 Проверка самих тестов: mutmut (бэкенд: геометрия, леска, нити, файл проекта, обновление) и Stryker
 (фронтенд: `lib/` — гвозди, леска, катушка, время, кадр, нити, формат, обновление, управление).
-`.github/workflows/mutation.yml` — раз в неделю и вручную; порог — не меньше 60 % (mutmut) и 50 % (Stryker)
+`.github/workflows/mutation.yml` — раз в неделю и вручную; порог — не меньше 75 % (mutmut) и 80 % (Stryker). Сейчас: Stryker — 91,6 % (было 68,7 %), mutmut — ~89 % (было 73 %); тесты, закрывшие разницу, — `backend/tests/test_mutation_gaps.py` и `frontend/tests/unit/mutation-gaps.test.ts`
 убитых мутантов, отчёты — артефактами.
 
 ## Версия для телефона (GitHub Pages, без сервера)

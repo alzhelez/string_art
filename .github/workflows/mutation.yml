@@ -63,8 +63,8 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
               # Заголовок и цифры
               f.write(f"### mutmut: убито {killed:.0%}\n\n" + "\n".join(f"- {k}: {v}" for k, v in count.most_common()) + "\n")
-          # Ниже 60 % — провал
-          raise SystemExit(0 if killed >= 0.6 else f"Убито только {killed:.0%} мутантов (нужно ≥ 60 %)")
+          # Ниже 75 % — провал (после тестов test_mutation_gaps.py убивается ~89 %)
+          raise SystemExit(0 if killed >= 0.75 else f"Убито только {killed:.0%} мутантов (нужно ≥ 75 %)")
           # Конец скрипта Python
           PY
       # Список выживших — артефактом
