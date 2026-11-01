@@ -57,8 +57,10 @@ jobs:
           count = collections.Counter(s.strip() for _, s in lines)
           # Всего
           total = sum(count.values()) or 1
-          # Доля убитых
-          killed = count.get("killed", 0) / total
+          # Доля пойманных: убитые и зависшие (таймаут — тоже «тест заметил поломку»)
+          killed = (count.get("killed", 0) + count.get("timeout", 0)) / total
+          # Итог аннотацией — его видно на странице проверки без журнала
+          print(f"::notice title=mutmut::поймано {killed:.1%}: " + ", ".join(f"{k} {v}" for k, v in count.most_common()))
           # В сводку GitHub
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
               # Заголовок и цифры
