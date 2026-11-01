@@ -25,20 +25,11 @@ jobs:
         env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "${{ github.repository }}" }
         # Сценарий
         run: |
-          # Файл
-          "x" | Out-File probe.txt
-          # Варианты флагов
-          $cases = @{ plain = @(); latest = @('--latest'); target = @('--target', $env:GITHUB_SHA); title = @('--title', 'Нитеграф для Windows 1.4.999'); file = @('probe.txt'); all = @('probe.txt', '--title', 'Нитеграф 1.4.999', '--target', $env:GITHUB_SHA, '--latest') }
-          # Каждый вариант
-          foreach ($k in $cases.Keys) {
-            # Тег
-            $t = "probe-$env:GITHUB_RUN_ID-$($env:RUNNER_OS)-$k"
-            # Попытка
-            $out = gh release create $t @($cases[$k]) --notes probe 2>&1
-            # Итог аннотацией
-            Write-Host "::notice title=$($env:RUNNER_OS) $k::rc=$LASTEXITCODE $(($out | Out-String).Trim())"
-            # Уборка
-            gh release delete $t --yes --cleanup-tag 2>$null
-          }
-          # Код возврата — успех
+          # Ровно тот тег, что у программы (если получится — релиз оставляем, сборка заполнит его файлами)
+          if ($env:RUNNER_OS -ne "Windows") { exit 0 }
+          # Попытка
+          $out = gh release create desktop-latest --title "Нитеграф для Windows (идёт сборка)" --notes "Файлы появятся после сборки." --target $env:GITHUB_SHA --latest 2>&1
+          # Итог аннотацией
+          Write-Host "::notice title=desktop-latest::rc=$LASTEXITCODE $(($out | Out-String).Trim())"
+          # Успех шага в любом случае
           exit 0
