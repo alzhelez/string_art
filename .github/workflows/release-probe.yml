@@ -1,0 +1,44 @@
+# Временная проверка: та же команда создания релиза, что у сборки программы (после проверки файл удаляется)
+# Название
+name: release-probe
+# Только вручную
+on: workflow_dispatch
+# Права как у сборки программы
+permissions:
+  # Запись содержимого
+  contents: write
+# Задачи
+jobs:
+  # Проверка на Windows и Linux
+  probe:
+    # Обе системы
+    strategy: { matrix: { os: [windows-latest, ubuntu-24.04] }, fail-fast: false }
+    # Машина
+    runs-on: ${{ matrix.os }}
+    # Шаги
+    steps:
+      # Пробные варианты
+      - name: Пробы
+        # PowerShell на обеих системах
+        shell: pwsh
+        # Токен
+        env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "${{ github.repository }}" }
+        # Сценарий
+        run: |
+          # Файл
+          "x" | Out-File probe.txt
+          # Варианты флагов
+          $cases = @{ plain = @(); latest = @('--latest'); target = @('--target', $env:GITHUB_SHA); title = @('--title', 'Нитеграф для Windows 1.4.999'); file = @('probe.txt'); all = @('probe.txt', '--title', 'Нитеграф 1.4.999', '--target', $env:GITHUB_SHA, '--latest') }
+          # Каждый вариант
+          foreach ($k in $cases.Keys) {
+            # Тег
+            $t = "probe-$env:GITHUB_RUN_ID-$($env:RUNNER_OS)-$k"
+            # Попытка
+            $out = gh release create $t @($cases[$k]) --notes probe 2>&1
+            # Итог аннотацией
+            Write-Host "::notice title=$($env:RUNNER_OS) $k::rc=$LASTEXITCODE $(($out | Out-String).Trim())"
+            # Уборка
+            gh release delete $t --yes --cleanup-tag 2>$null
+          }
+          # Код возврата — успех
+          exit 0
