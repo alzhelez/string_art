@@ -196,6 +196,7 @@ def test_update_size_limit_boundary(net, monkeypatch):
 @pytest.mark.parametrize(
     # Что отдаёт сеть и точный текст
     "routes, text",
+    # Случаи
     [
         # Нет интернета
         ({}, "Не удалось связаться с GitHub — проверьте интернет"),
@@ -361,6 +362,7 @@ def test_export_time_utc(client):
 @pytest.mark.parametrize(
     # Что испортить и точный текст
     "spoil, text",
+    # Случаи
     [
         # Испорченный base64 подготовленного фото
         (lambda d: d.update(source_png="@@@@"), "Подготовленное фото: испорченные данные"),
